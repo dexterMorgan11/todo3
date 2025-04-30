@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo Timer App</title>
+  <!-- Added link for Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script defer src="https://unpkg.com/feather-icons"></script>
+  <!-- SortableJS for drag and drop -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <style>
+    /* Ensure Inter font is used */
+    body { font-family: 'Inter', sans-serif; }
+    .calendar-day { width: 30px; height: 30px; margin: 2px; }
+    .calendar-day:hover { transform: scale(1.1); }
+
+    /* Light mode styles */
+    html:not(.dark) body {
+      background-color: #f0f4f8;
+      color: #1a202c;
+    }
+
+    html:not(.dark) .bg-gray-900 {
+      background-color: #ffffff;
+    }
+
+    html:not(.dark) .bg-gray-800 {
+      background-color: #edf2f7;
+    }
+
+    html:not(.dark) .bg-gray-700 {
+      background-color: #e2e8f0;
+      color: #1a202c; /* Ensure text is readable in light mode bg-gray-700 */
+    }
+     html:not(.dark) .bg-gray-700 input,
+    html:not(.dark) .bg-gray-700 select {
+       color: #1a202c; /* Ensure input/select text is readable */
+    }
+     html:not(.dark) .bg-gray-600 { /* Style for disabled/completed buttons in light mode */
+       background-color: #cbd5e0; /* Gray-300 */
+       color: #4a5568; /* Gray-600 */
+    }
+
+
+    /* Keep button colors in light mode */
+    html:not(.dark) .bg-blue-600,
+    html:not(.dark) .bg-green-600,
+    html:not(.dark) .bg-red-600,
+    html:not(.dark) .bg-teal-600,
+    html:not(.dark) .bg-yellow-600,
+    html:not(.dark) .bg-orange-600 { /* Added orange for light mode consistency */
+      color: white;
+    }
+
+    /* Centralization styles */
+    .app-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .text-center-all * {
+      text-align: center;
+    }
+
+    .flex-center {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .grid-center {
+      display: grid;
+      place-items: center;
+    }
+
+    /* Style for the tab buttons */
+    .tab-button {
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+    .tab-button.active {
+        background-color: #4f46e5; /* Blue-600 */
+        color: white;
+        font-weight: bold;
+    }
+     html:not(.dark) .tab-button.active {
+         background-color: #3b82f6; /* Tailwind blue-500 for light mode active tab */
+     }
+    .tab-button:not(.active) {
+         background-color: #374151; /* Gray-700 */
+         color: #d1d5db; /* Gray-300 */
+    }
+     html:not(.dark) .tab-button:not(.active) {
+         background-color: #e2e8f0; /* Light gray for inactive tab in light mode */
+         color: #4a5568; /* Darker text */
+     }
+    .tab-button:not(.active):hover {
+         background-color: #4b5563; /* Gray-600 */
+    }
+    html:not(.dark) .tab-button:not(.active):hover {
+         background-color: #cbd5e0; /* Lighter gray hover */
+    }
+
+    /* Style for drag handle */
+    .drag-handle {
+        cursor: grab;
+    }
+    .drag-handle:active {
+        cursor: grabbing;
+    }
+
+  </style>
+</head>
+<body class="bg-black text-white min-h-screen flex flex-col items-center py-8">
+  <div class="w-full max-w-4xl p-6 space-y-8 bg-gray-900 rounded-2xl shadow-lg app-container">
+
+    <!-- Header -->
+    <header class="flex justify-center items-center text-center">
+      <div class="flex items-center gap-2 text-3xl font-semibold">
+        <i data-feather="clock"></i>
+        <span id="current-time">00:00:00</span>
+        <!-- Button starts styled for Dark Mode, showing Sun icon to switch to Light -->
+        <button id="dark-mode-toggle" class="ml-4 p-2 bg-gray-700 hover:bg-gray-600 text-yellow-300 rounded-full">
+          <i data-feather="sun"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Summary -->
+    <!-- Updated grid columns to 1 on small, 2 on medium, 4 on large to accommodate new section -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="p-4 bg-gray-800 rounded-lg text-center">
+        <h2 class="text-lg font-bold flex items-center justify-center gap-2 mb-2"><i data-feather="clock"></i> Remaining Today</h2>
+        <p id="remaining-today" class="text-2xl font-mono">00:00:00</p>
+
+        <!-- Sleep Time Remaining Section -->
+        <div class="mt-3 pt-3 border-t border-gray-700">
+          <h3 class="text-sm font-bold flex items-center justify-center gap-2 mb-1">
+            <i data-feather="moon"></i> Until Sleep
+          </h3>
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <input type="time" id="sleep-time-input" class="p-1 rounded bg-gray-700 text-white text-sm">
+          </div>
+          <p id="sleep-time-remaining" class="text-xl font-mono">00:00:00</p>
+        </div>
+      </div>
+
+       <!-- New: Wasted Hours Section -->
+       <div class="p-4 bg-gray-800 rounded-lg text-center">
+           <h2 class="text-lg font-bold mb-2">Wasted Hours</h2>
+           <p id="wasted-hours" class="text-2xl font-mono">16.00</p>
+           <p id="percentage-wasted" class="text-xl font-mono mt-2 transition-all duration-500">100%</p>
+           <!-- Reset Wasted Hours Today Button added by JS -->
+       </div>
+       <!-- End New: Wasted Hours Section -->
+
+
+      <div class="p-4 bg-gray-800 rounded-lg text-center">
+        <h2 class="text-lg font-bold mb-2">Hours Achieved</h2>
+        <p id="hours-achieved" class="text-2xl font-mono">0.00</p>
+        <p id="percentage-achieved" class="text-xl font-mono mt-2 transition-all duration-500">0%</p>
+
+        <!-- Habit Calendar Toggle -->
+        <button id="toggle-calendar" class="mt-2 text-sm text-blue-400 hover:underline">Show Calendar</button>
+
+        <!-- Utility Buttons Added Here by JS -->
+        <!-- <button id="reset-hours-button" ...>Reset Hours Achieved Today</button> -->
+        <!-- <button id="clear-all-data-button" ...>Clear ALL Saved Data</button> -->
+
+      </div>
+      <div class="p-4 bg-gray-800 rounded-lg text-center">
+        <h2 class="text-lg font-bold mb-2"><i data-feather="calendar"></i> Deadline</h2>
+        <!-- This input allows selecting both date and time, browser implementation varies -->
+        <input id="deadline-input" type="datetime-local" class="w-full p-2 rounded bg-gray-700 text-white">
+        <div class="flex items-center justify-center gap-2 mt-2">
+          <input id="sleep-toggle" type="checkbox" class="h-5 w-5 text-blue-600">
+          <label for="sleep-toggle" class="text-sm">Exclude 8h sleep/day</label>
+        </div>
+        <div class="flex items-center justify-center gap-2 mt-2">
+          <input id="slept-today-toggle" type="checkbox" class="h-5 w-5 text-blue-600">
+          <label for="slept-today-toggle" class="text-sm">Add 8 hours I slept already</label>
+        </div>
+         <!-- New: Show Days Toggle -->
+        <div class="flex items-center justify-center gap-2 mt-2">
+          <input id="show-days-toggle" type="checkbox" class="h-5 w-5 text-blue-600">
+          <label for="show-days-toggle" class="text-sm">Show remaining time in days</label>
+        </div>
+        <!-- End New -->
+        <p id="deadline-remaining" class="mt-2 text-sm">No deadline set</p>
+      </div>
+    </section>
+
+    <!-- Habit Calendar Section -->
+    <section id="habit-calendar-section" class="p-4 bg-gray-800 rounded-lg hidden text-center">
+      <h2 class="text-xl font-bold flex items-center justify-center gap-2 mb-4">
+        <i data-feather="calendar"></i> Habit Calendar
+      </h2>
+      <div class="flex justify-between items-center mb-4">
+        <button id="prev-month" class="p-2 bg-gray-700 rounded"><i data-feather="chevron-left"></i></button>
+        <h3 id="calendar-month" class="text-lg font-semibold">January 2023</h3>
+        <button id="next-month" class="p-2 bg-gray-700 rounded"><i data-feather="chevron-right"></i></button>
+      </div>
+      <div class="flex justify-around mb-2 text-xs text-gray-400">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div id="calendar-days" class="flex flex-wrap justify-center"></div>
+      <div class="flex justify-between mt-4 text-sm">
+        <div class="flex items-center gap-2">
+          <div class="w-4 h-4 bg-red-500 rounded"></div>
+          <span>0-25% Achieved</span> <!-- Updated legend -->
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-4 h-4 bg-yellow-500 rounded"></div>
+          <span>25-50% Achieved</span> <!-- Updated legend -->
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-4 h-4 bg-green-500 rounded"></div>
+          <span>50-75% Achieved</span> <!-- Updated legend -->
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-4 h-4 bg-blue-500 rounded"></div>
+          <span>75-100% Achieved</span> <!-- Updated legend -->
+        </div>
+      </div>
+    </section>
+
+     <!-- Add Task (Main List) -->
+    <section class="p-4 bg-gray-800 rounded-lg" id="main-add-task-section">
+       <h2 class="text-xl font-bold mb-4 text-center">Add Task to Current List</h2>
+       <div class="flex flex-col md:flex-row gap-4 justify-center">
+        <input id="new-task-input" type="text" placeholder="New task..." class="flex-1 p-2 rounded bg-gray-700 text-white">
+        <select id="timer-select" class="p-2 rounded bg-gray-700 text-white">
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="45">45 min</option>
+          <option value="60">1 hr</option>
+          <option value="90">1 hr 30 min</option>
+        </select>
+        <button id="add-task-button" class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded">Add Task</button>
+      </div>
+      <div id="preset-task-container" class="flex flex-wrap gap-2 mt-4 justify-center"></div>
+    </section>
+
+
+    <!-- Tasks Section (Now includes tabs and potential weekly plan view) -->
+    <section class="p-4 bg-gray-800 rounded-lg">
+        <!-- Task Tabs -->
+        <div class="flex justify-center mb-4 gap-4">
+            <button id="current-tasks-tab" class="tab-button active"><i data-feather="list"></i> Current Tasks</button>
+            <button id="weekly-plan-tab" class="tab-button"><i data-feather="calendar-alt"></i> Weekly Plan</button>
+        </div>
+
+        <!-- Current Tasks View -->
+        <div id="current-tasks-view">
+            <div class="flex justify-between items-center mb-4">
+               <!-- Removed the icon and text from the heading as it's now in the tab -->
+               <h2 class="text-xl font-bold"></h2>
+               <!-- Clear All Tasks Button -->
+               <button id="clear-all-tasks-button" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm">
+                 Clear All Tasks
+               </button>
+            </div>
+
+            <!-- Total Planned Time Display -->
+            <div class="text-center mb-4 text-sm text-gray-400">
+              Total Planned Time: <span id="total-planned-time">0 hours 0 minutes</span>
+            </div>
+
+            <!-- Container for the list of tasks -->
+            <div id="tasks-list-container" class="space-y-4 text-center">
+              <p class="text-center italic text-gray-400">No tasks yet. Add one above!</p>
+            </div>
+        </div>
+
+        <!-- Weekly Plan View -->
+        <div id="weekly-plan-container" class="hidden">
+             <div class="flex flex-col items-center mb-4">
+                <h2 class="text-xl font-bold mb-2">Plan for <span id="weekly-plan-day-name"></span></h2>
+                 <!-- Day Selection Buttons -->
+                <div id="weekly-day-selector" class="flex flex-wrap gap-2 justify-center text-sm mb-4">
+                   <!-- Buttons added by JS -->
+                </div>
+                 <!-- Load Today's Plan Button -->
+                <button id="load-todays-plan-button" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded w-full md:w-auto">
+                    Load Plan <i data-feather="chevrons-down"></i>
+                </button>
+             </div>
+
+             <!-- Add Task to Weekly Plan Form -->
+             <div class="p-4 bg-gray-700 rounded-lg mb-4">
+                <h3 class="text-lg font-semibold mb-3 text-center">Add Task to Plan</h3>
+                 <div class="flex flex-col md:flex-row gap-4 justify-center">
+                    <input id="weekly-task-input" type="text" placeholder="New planned task..." class="flex-1 p-2 rounded bg-gray-600 text-white">
+                    <select id="weekly-timer-select" class="p-2 rounded bg-gray-600 text-white">
+                      <option value="15">15 min</option>
+                      <option value="30">30 min</option>
+                      <option value="45">45 min</option>
+                      <option value="60">1 hr</option>
+                      <option value="90">1 hr 30 min</option>
+                    </select>
+                    <button id="add-weekly-task-button" class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded">Add to Plan</button>
+                 </div>
+             </div>
+
+
+            <!-- Container for the list of weekly tasks for the selected day -->
+            <div id="weekly-tasks-list" class="space-y-4 text-center">
+                 <p class="text-center italic text-gray-400">No tasks planned for this day.</p>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- Break -->
+    <section class="p-4 bg-gray-800 rounded-lg text-center">
+      <h2 class="text-xl font-bold mb-4 text-center">Take a Break</h2>
+      <div id="break-container" class="flex flex-wrap gap-2 justify-center"></div>
+    </section>
+  </div>
+
+<script>
+// Notification permission request - Request immediately on page load
+if (Notification.permission !== 'granted') {
+  Notification.requestPermission().then(permission => {
+    if (permission === 'granted') {
+      console.log('Notification permission granted.');
+    } else {
+      console.log('Notification permission denied.');
+    }
+  });
+}
+
+
+// Preload audio files (optional but can make playback smoother)
+// These are using external URLs, so they work when hosted.
+const taskCompleteSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3');
+taskCompleteSound.volume = 0.7; // Set a reasonable volume (0.0 to 1.0)
+
+const breakEndSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3');
+breakEndSound.volume = 0.7;
+
+
+const state = {
+  tasks: [], // Active/current tasks with timers
+  weeklyPlan: { // Tasks planned for each day of the week
+      0: [], // Sunday
+      1: [], // Monday
+      2: [], // Tuesday
+      3: [], // Wednesday
+      4: [], // Thursday
+      5: [], // Friday
+      6: []  // Saturday
+  },
+  selectedDay: new Date().getDay(), // Day index (0-6) for viewing in the weekly plan UI
+  currentTaskView: 'current', // 'current' or 'weekly'
+  hoursAchieved: 0, // Total hours achieved TODAY
+  deadline: null,
+  breakActive: false,
+  breakTimeLeft: 0,
+  dailyProgress: {} // New state for tracking daily progress percentage
+};
+
+// Define the total potential productive hours in a day (24 total - 8 sleep = 16)
+const DAILY_PRODUCTIVE_HOURS = 16;
+
+const elems = {
+  time: document.getElementById('current-time'),
+  remainingToday: document.getElementById('remaining-today'),
+  deadlineInput: document.getElementById('deadline-input'),
+  sleepToggle: document.getElementById('sleep-toggle'),
+  sleptToggle: document.getElementById('slept-today-toggle'),
+  showDaysToggle: document.getElementById('show-days-toggle'), // New element
+  deadlineRemaining: document.getElementById('deadline-remaining'),
+
+  // Hours Achieved elements
+  hoursAchieved: document.getElementById('hours-achieved'),
+  percentageAchieved: document.getElementById('percentage-achieved'),
+
+  // New Wasted Hours elements
+  wastedHours: document.getElementById('wasted-hours'),
+  percentageWasted: document.getElementById('percentage-wasted'),
+
+  // Main Task Add Section
+  mainAddTaskSection: document.getElementById('main-add-task-section'),
+  newTaskInput: document.getElementById('new-task-input'),
+  timerSelect: document.getElementById('timer-select'),
+  addTaskButton: document.getElementById('add-task-button'),
+  presetContainer: document.getElementById('preset-task-container'),
+
+  // Tasks Section (Wrapper)
+  tasksSection: document.querySelector('section:has(#current-tasks-view)'), // Select the section containing task views
+  currentTasksTab: document.getElementById('current-tasks-tab'),
+  weeklyPlanTab: document.getElementById('weekly-plan-tab'),
+
+  // Current Tasks View
+  currentTasksView: document.getElementById('current-tasks-view'),
+  tasksListContainer: document.getElementById('tasks-list-container'),
+  totalPlannedTime: document.getElementById('total-planned-time'),
+  clearAllTasksButton: document.getElementById('clear-all-tasks-button'), // Clear All Tasks button
+
+  // Weekly Plan View
+  weeklyPlanContainer: document.getElementById('weekly-plan-container'),
+  weeklyPlanDayName: document.getElementById('weekly-plan-day-name'),
+  weeklyDaySelector: document.getElementById('weekly-day-selector'),
+  loadTodaysPlanButton: document.getElementById('load-todays-plan-button'),
+  weeklyTaskInput: document.getElementById('weekly-task-input'),
+  weeklyTimerSelect: document.getElementById('weekly-timer-select'),
+  addWeeklyTaskButton: document.getElementById('add-weekly-task-button'),
+  weeklyTasksList: document.getElementById('weekly-tasks-list'),
+
+
+  breakContainer: document.getElementById('break-container'),
+  darkModeToggle: document.getElementById('dark-mode-toggle'),
+  // New elements for sleep time
+  sleepTimeInput: document.getElementById('sleep-time-input'),
+  sleepTimeRemaining: document.getElementById('sleep-time-remaining'),
+  // New elements for habit calendar
+  toggleCalendar: document.getElementById('toggle-calendar'),
+  calendarSection: document.getElementById('habit-calendar-section'),
+  calendarMonth: document.getElementById('calendar-month'),
+  calendarDays: document.getElementById('calendar-days'),
+  prevMonth: document.getElementById('prev-month'),
+  nextMonth: document.getElementById('next-month'),
+
+};
+
+const presets = [
+  { text: 'Study', duration: 60 },
+  { text: 'Pray', duration: 30 },
+  { text: 'Meeting', duration: 60 },
+  { text: 'Reading', duration: 45 },
+  { text: 'GYM', duration: 60 }
+];
+
+const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+
+// Calendar functionality
+let currentDate = new Date();
+let currentMonth = currentDate.getMonth();
+let currentYear = currentDate.getFullYear();
+
+// Toggle calendar visibility
+elems.toggleCalendar.addEventListener('click', () => {
+  const isHidden = elems.calendarSection.classList.contains('hidden');
+  elems.calendarSection.classList.toggle('hidden');
+  elems.toggleCalendar.textContent = isHidden ? 'Hide Calendar' : 'Show Calendar';
+  if (isHidden) {
+    renderCalendar();
+    feather.replace(); // Re-initialize feather icons
+  }
+});
+
+// Month navigation
+elems.prevMonth.addEventListener('click', () => {
+  currentMonth--;
+  if (currentMonth < 0) {
+    currentMonth = 11;
+    currentYear--;
+  }
+  renderCalendar();
+});
+
+elems.nextMonth.addEventListener('click', () => {
+  currentMonth++;
+  if (currentMonth > 11) {
+    currentMonth = 0;
+    currentYear++;
+  }
+  renderCalendar();
+});
+
+function renderCalendar() {
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+
+  elems.calendarMonth.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+  elems.calendarDays.innerHTML = '';
+
+  // Get first day of month and total days
+  // Note: getDay() returns 0 for Sunday, 1 for Monday...
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+  const firstDayWeekday = firstDayOfMonth.getDay(); // 0 for Sunday, 1 for Monday
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  // Calculate padding days at the start to align with Monday start (0=Mon, 6=Sun)
+  // getDay() returns 0 (Sun) to 6 (Sat). We want Mon as 0.
+  // If firstDayWeekday is 0 (Sun), we need 6 padding days. (0 -> 6)
+  // If firstDayWeekday is 1 (Mon), we need 0 padding days. (1 -> 0)
+  // If firstDayWeekday is 2 (Tue), we need 1 padding day. (2 -> 1)
+  // The formula is (firstDayWeekday + 6) % 7.
+  const startOffset = (firstDayWeekday + 6) % 7;
+
+
+  // Add empty cells for days before the 1st
+  for (let i = 0; i < startOffset; i++) {
+    const emptyDay = document.createElement('div');
+    emptyDay.className = 'calendar-day'; // Keep the calendar-day class for consistent size/margin
+    elems.calendarDays.appendChild(emptyDay);
+  }
+
+  // Add days of the month
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayElem = document.createElement('div');
+    dayElem.className = 'calendar-day flex items-center justify-center rounded transition-all duration-300 text-black'; // text-black ensures visibility in colored squares
+
+    // Format date string for lookup in dailyProgress
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const progress = state.dailyProgress[dateStr] || 0; // Get saved percentage or 0
+
+    // Color based on progress
+    // Check if it's a future date relative to today
+    const today = new Date();
+    const comparisonDate = new Date(currentYear, currentMonth, day);
+    comparisonDate.setHours(0,0,0,0); // Compare dates only, ignore time
+    const startOfToday = new Date(today);
+    startOfToday.setHours(0,0,0,0);
+
+    if (comparisonDate > startOfToday) {
+       dayElem.classList.add('bg-gray-700'); // Future dates are just grey
+       dayElem.classList.remove('text-black'); // Remove text-black for grey
+       dayElem.classList.add('text-white'); // Add white text for grey bg in dark mode
+        // Need to handle light mode text color for bg-gray-700 specifically
+        // Added rule to CSS above for html:not(.dark) .bg-gray-700
+    } else {
+        // Past or present dates - color based on progress (percentage *achieved*)
+        if (progress < 1) { // Use < 1 instead of === 0 to handle potential tiny float values near zero
+            dayElem.classList.add('bg-red-500');
+        } else if (progress < 25) {
+            dayElem.classList.add('bg-red-500'); // Use red for 0-24.99% Achieved
+        } else if (progress < 50) {
+            dayElem.classList.add('bg-yellow-500'); // Use yellow for 25-49.99% Achieved
+        } else if (progress < 75) {
+            dayElem.classList.add('bg-green-500'); // Use green for 50-74.99% Achieved
+        } else { // 75% or more
+            dayElem.classList.add('bg-blue-500'); // Using blue for 75%+ Achieved as per calendar legend
+        }
+         // Ensure text is black for colored backgrounds
+         dayElem.classList.remove('text-white'); // Remove white text for colored bg
+         dayElem.classList.add('text-black');
+    }
+
+
+    // Highlight today regardless of color
+    if (day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
+      dayElem.classList.add('ring-2', 'ring-white'); // Add a ring for today
+    }
+
+    dayElem.textContent = day;
+
+    // Add tooltip with exact percentage
+    dayElem.title = progress > 0 ? `${progress.toFixed(0)}% achieved` : 'No data recorded'; // Tooltip shows achieved percentage
+    if (comparisonDate > startOfToday) {
+         dayElem.title = 'Future date';
+    } else if (progress === 0) {
+         dayElem.title = '0% achieved'; // Be explicit about 0%
+    }
+
+
+    elems.calendarDays.appendChild(dayElem);
+  }
+}
+
+// Update daily progress based on achieved hours
+function updateDailyProgress() {
+  // Get today's date string
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  // Calculate percentage achieved for today based on the 16-hour target
+  const pctAchieved = Math.min((state.hoursAchieved / DAILY_PRODUCTIVE_HOURS) * 100, 100);
+
+  // Only update if the percentage has significantly changed (e.g., by 1%)
+  // or if it's the first time setting today's progress.
+  // This prevents excessive saves and calendar re-renders.
+  const currentSavedPct = state.dailyProgress[dateStr] || 0;
+  if (Math.abs(pctAchieved - currentSavedPct) >= 1 || (currentSavedPct === 0 && pctAchieved > 0)) {
+      state.dailyProgress[dateStr] = parseFloat(pctAchieved.toFixed(2)); // Save with 2 decimal places
+
+      // Save to localStorage
+      localStorage.setItem('dailyProgress', JSON.stringify(state.dailyProgress));
+
+      // Update calendar if visible
+      if (!elems.calendarSection.classList.contains('hidden')) {
+        renderCalendar();
+      }
+  }
+}
+
+function renderPresets() {
+  elems.presetContainer.innerHTML = '';
+  presets.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'p-2 bg-teal-600 hover:bg-teal-700 text-white rounded';
+    btn.textContent = `${p.text} (${p.duration} min)`;
+    btn.onclick = () => addTask(p.text, p.duration); // This adds to the main task list
+    elems.presetContainer.appendChild(btn);
+  });
+}
+
+// Add task to the MAIN task list (the one with timers)
+function addTask(text, minutes) {
+  const duration = (minutes ?? parseInt(elems.timerSelect.value)) * 60;
+  const taskText = text ?? elems.newTaskInput.value.trim();
+  if (!taskText || duration <= 0) {
+      alert('Please enter task text and select a valid duration.'); // User feedback
+      return; // Ensure task text and duration are valid
+  }
+  state.tasks.push({ id: Date.now(), text: taskText, duration: duration, remaining: duration, active: false, completed: false });
+  elems.newTaskInput.value = '';
+  renderTasks(); // Render the main task list
+  saveTasks(); // Save tasks after adding
+}
+
+// Add task to the WEEKLY PLAN for the selected day
+function addWeeklyPlanTask() {
+    const duration = parseInt(elems.weeklyTimerSelect.value) * 60;
+    const taskText = elems.weeklyTaskInput.value.trim();
+    if (!taskText || duration <= 0) {
+         alert('Please enter planned task text and select a valid duration.'); // User feedback
+         return; // Ensure task text and duration are valid
+    }
+
+    // Add task to the currently selected day in the weekly plan
+    const dayIndex = state.selectedDay; // Use the state's selected day
+    if (!state.weeklyPlan[dayIndex]) {
+        state.weeklyPlan[dayIndex] = []; // Ensure array exists
+    }
+    // Weekly plan tasks are simpler, no need for id, remaining, active, completed initially
+    state.weeklyPlan[dayIndex].push({ text: taskText, duration: duration });
+
+    elems.weeklyTaskInput.value = ''; // Clear input
+    renderWeeklyPlan(); // Re-render the weekly plan for the current day
+    saveWeeklyPlan(); // Save the weekly plan
+}
+
+// Function to calculate and display total planned time (for the main task list)
+function updatePlannedTotal() {
+  let totalSeconds = 0;
+  state.tasks.forEach(task => {
+    // Sum up the initial duration of all tasks that are NOT completed
+    // Sum only planned tasks, exclude completed ones from the "planned" total
+    // Note: This sums the *initial* duration for uncompleted tasks, not the remaining time.
+    // If we want the sum of *remaining* time, change task.duration to task.remaining.
+    // Let's stick to remaining time for the currently *available* planned time.
+    if (!task.completed) {
+       totalSeconds += task.remaining; // Sum remaining time for uncompleted tasks
+    }
+  });
+
+   // Display in hours and minutes
+   const totalHours = Math.floor(totalSeconds / 3600);
+   const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
+
+   let parts = [];
+   if (totalHours > 0) parts.push(`${totalHours} hour${totalHours > 1 ? 's' : ''}`);
+   // Always show minutes if there are any seconds or if hours is 0
+   if (totalMinutes > 0 || totalHours === 0) parts.push(`${totalMinutes} minute${totalMinutes > 1 ? 's' : ''}`);
+
+   if (elems.totalPlannedTime) {
+      elems.totalPlannedTime.textContent = parts.length > 0 ? parts.join(' ') : '0 minutes';
+   }
+}
+
+// Helper function to format duration based on toggle (used for deadline)
+function formatDuration(seconds, showDays = false) {
+    if (isNaN(seconds) || seconds === undefined) { // Handle undefined as well
+        return showDays ? "0 minutes" : "00:00:00";
+    }
+    const absSeconds = Math.abs(seconds);
+
+    if (showDays) {
+        const days = Math.floor(absSeconds / 86400);
+        const remainingSecondsAfterDays = absSeconds % 86400;
+        const hours = Math.floor(remainingSecondsAfterDays / 3600);
+        const minutes = Math.floor((remainingSecondsAfterDays % 3600) / 60);
+        // const secs = remainingSecondsAfterDays % 60; // Keep seconds for more precision if needed
+
+        let parts = [];
+        if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+        if (hours > 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+        // Only show minutes if days/hours are not present, or if it's the last non-zero part
+        // Also show minutes if total time is less than an hour but more than 0
+         if (minutes > 0 || (days === 0 && hours === 0 && absSeconds > 0)) {
+             parts.push(`${minutes} minute${minutes > 1 ? 's' : ''}`);
+        }
+        // If seconds are present but less than a minute, show seconds (optional)
+        // if (days === 0 && hours === 0 && minutes === 0 && secs > 0) parts.push(`${secs} second${secs > 1 ? 's' : ''}`);
+
+
+        if (parts.length === 0 && absSeconds === 0) return "0 minutes"; // Handle exactly 0 seconds
+        if (parts.length === 0 && absSeconds > 0 && absSeconds < 60) return `${absSeconds.toFixed(0)} second${absSeconds.toFixed(0) != '1' ? 's' : ''}`; // Fallback for < 1 min
+        if (parts.length === 0 && absSeconds > 0) return formatDuration(absSeconds, false); // Fallback if calculation yielded nothing
+
+        return (seconds < 0 ? '-' : '') + parts.join(' '); // Add negative sign if original seconds were negative
+    } else {
+        // HH:MM:SS format
+         const s = Math.floor(absSeconds); // Ensure integer seconds
+         const h = String(Math.floor(s/3600)).padStart(2,'0');
+         const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+         const ss = String(s%60).padStart(2,'0');
+         return (seconds < 0 ? '-' : '') + `${h}:${m}:${ss}`; // Add negative sign if original seconds were negative
+    }
+}
+
+
+// Keep the original formatTime for HH:MM:SS display elsewhere (used for timers)
+function formatTime(sec) {
+  if (isNaN(sec) || sec === undefined || sec < 0) {
+    return "00:00:00";
+  }
+  // Use Math.floor before padding to handle potential floating point issues near zero
+  const s = Math.floor(sec); // Ensure seconds is an integer for formatting
+  const h = String(Math.floor(s/3600)).padStart(2,'0');
+  const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+  const ss = String(s%60).padStart(2,'0');
+  return `${h}:${m}:${ss}`;
+}
+
+// Render the MAIN task list
+function renderTasks() {
+  elems.tasksListContainer.innerHTML = ''; // Use the new list container
+  if (!state.tasks.length) {
+    elems.tasksListContainer.innerHTML = '<p class="text-center italic text-gray-400">No tasks yet. Add one above!</p>'; // Added gray text for better look
+  } else {
+    state.tasks.forEach((task, taskIndex) => { // Use taskIndex here
+      const div = document.createElement('div');
+      // Added items-center to the main flex div for vertical alignment
+      div.className = 'flex flex-col sm:flex-row justify-between items-center bg-gray-700 p-4 rounded-lg gap-4';
+      div.dataset.taskId = task.id; // Add task ID for easier DOM lookup
+
+      // Left side: Drag handle + Task text & Timer
+      const leftContent = document.createElement('div');
+      leftContent.className = 'flex-1 flex items-center gap-2'; // Flex container for handle and text/timer
+
+      // Drag handle
+      const dragHandle = document.createElement('i');
+      dragHandle.dataset.feather = 'grip-vertical'; // Use feather icon data attribute
+      dragHandle.className = 'drag-handle cursor-grab text-gray-400'; // Add class for drag handle
+
+      // Text & Timer container
+      const textTimerContainer = document.createElement('div');
+      textTimerContainer.className = 'flex-1 text-center sm:text-left'; // Text align within this container
+      textTimerContainer.innerHTML = `
+          <h3 class="text-lg font-semibold ${task.completed?'line-through text-gray-400':'text-white'}">${task.text}</h3>
+          <p class="font-mono text-sm ${task.active ? 'text-green-400' : (task.completed ? 'text-blue-400' : 'text-gray-400')}">${formatTime(task.remaining)}</p>
+      `;
+
+      leftContent.appendChild(dragHandle);
+      leftContent.appendChild(textTimerContainer);
+
+      // Right side: Buttons
+      const buttonsDiv = document.createElement('div');
+      buttonsDiv.className = 'flex gap-2 justify-center sm:justify-end';
+
+      // Add Up button
+      const upButton = document.createElement('button');
+      upButton.className = `px-2 py-1 rounded text-white text-sm ${taskIndex === 0 ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`;
+      upButton.innerHTML = '<i data-feather="chevron-up"></i>';
+      upButton.dataset.action = 'up';
+      upButton.dataset.id = task.id; // Use task.id, not index
+      upButton.disabled = taskIndex === 0 || task.active || state.breakActive; // Disable if first, active task, or break active
+      buttonsDiv.appendChild(upButton);
+
+      // Add Down button
+      const downButton = document.createElement('button');
+      downButton.className = `px-2 py-1 rounded text-white text-sm ${taskIndex === state.tasks.length - 1 ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`;
+      downButton.innerHTML = '<i data-feather="chevron-down"></i>';
+      downButton.dataset.action = 'down';
+      downButton.dataset.id = task.id; // Use task.id, not index
+      downButton.disabled = taskIndex === state.tasks.length - 1 || task.active || state.breakActive; // Disable if last, active task, or break active
+      buttonsDiv.appendChild(downButton);
+
+      // Add existing action buttons
+      // Toggle button
+       const toggleButton = document.createElement('button');
+       toggleButton.dataset.action = 'toggle';
+       toggleButton.dataset.id = task.id;
+       toggleButton.className = `px-3 py-1 text-white rounded text-sm ${task.active ? 'bg-yellow-600 hover:bg-yellow-700' : (task.completed ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700')}`;
+       toggleButton.disabled = task.completed || state.breakActive || (state.tasks.some(t => t.active) && !task.active); // Disable if completed, break active, or another task is active
+       toggleButton.textContent = task.active?'Pause':'Start';
+       buttonsDiv.appendChild(toggleButton);
+
+
+      // Complete button
+      const completeButton = document.createElement('button');
+      completeButton.dataset.action = 'complete';
+      completeButton.dataset.id = task.id;
+      completeButton.className = `px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm ${task.completed ? 'bg-gray-600 cursor-not-allowed' : ''}`;
+      completeButton.disabled = task.completed || state.breakActive; // Disable if completed or break active
+      completeButton.textContent = 'Done';
+      buttonsDiv.appendChild(completeButton);
+
+      // Delete button
+      const deleteButton = document.createElement('button');
+      deleteButton.dataset.action = 'delete';
+      deleteButton.dataset.id = task.id;
+      deleteButton.className = 'px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm';
+      deleteButton.textContent = 'Delete';
+      buttonsDiv.appendChild(deleteButton);
+
+
+      div.appendChild(leftContent);
+      div.appendChild(buttonsDiv);
+
+      elems.tasksListContainer.appendChild(div);
+    });
+  }
+
+  // Update the total planned time whenever tasks are rendered
+  updatePlannedTotal();
+
+   // Re-initialize feather icons in the main task list
+   if (typeof feather !== 'undefined') {
+       feather.replace({ root: elems.tasksListContainer }); // Only replace icons within this container
+   }
+}
+
+
+// Render the WEEKLY PLAN tasks for the selected day
+function renderWeeklyPlan() {
+     const dayIndex = state.selectedDay;
+     const weeklyTasks = state.weeklyPlan[dayIndex] || [];
+
+     elems.weeklyPlanDayName.textContent = dayNames[dayIndex]; // Set day name heading
+     elems.weeklyTasksList.innerHTML = ''; // Clear previous tasks
+
+     if (!weeklyTasks.length) {
+         elems.weeklyTasksList.innerHTML = '<p class="text-center italic text-gray-400">No tasks planned for this day.</p>';
+     } else {
+         weeklyTasks.forEach((task, index) => {
+             const div = document.createElement('div');
+             // Add an index or identifier to the element for deletion
+             div.dataset.weeklyTaskIndex = index;
+             div.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-lg gap-4 text-center sm:text-left';
+
+             const contentDiv = document.createElement('div');
+             contentDiv.className = 'flex-1';
+             contentDiv.innerHTML = `
+                 <h3 class="text-lg font-semibold text-white">${task.text}</h3>
+                 <p class="font-mono text-sm text-gray-400">${task.duration / 60} min</p>
+             `;
+
+             const deleteButton = document.createElement('button');
+             deleteButton.className = 'px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm';
+             deleteButton.textContent = 'Delete';
+             deleteButton.dataset.action = 'delete-weekly'; // Custom action identifier
+             deleteButton.dataset.index = index; // Store the index for deletion
+
+             div.appendChild(contentDiv);
+             div.appendChild(deleteButton);
+
+             elems.weeklyTasksList.appendChild(div);
+         });
+     }
+
+     // Ensure day selector buttons reflect the selected day
+     const dayButtons = elems.weeklyDaySelector.querySelectorAll('button');
+     dayButtons.forEach((btn, index) => {
+         if (index === dayIndex) {
+             btn.classList.add('bg-blue-600');
+             btn.classList.remove('bg-gray-700');
+         } else {
+             btn.classList.remove('bg-blue-600');
+             btn.classList.add('bg-gray-700');
+         }
+     });
+      // Re-initialize feather icons if any used in day selector buttons (currently none)
+     // if (typeof feather !== 'undefined') {
+     //     feather.replace({ root: elems.weeklyTasksList });
+     // }
+}
+
+
+// Function to create and render the day selection buttons
+function renderDaySelector() {
+    elems.weeklyDaySelector.innerHTML = '';
+    const todayIndex = new Date().getDay(); // 0-6, Sunday is 0
+
+    dayNames.forEach((dayName, index) => {
+        const button = document.createElement('button');
+        // Adjust index if you prefer Monday as the first button (optional)
+        // const displayIndex = (index + 6) % 7; // Mon=0, Tue=1, ..., Sun=6
+        // const displayDayName = dayNames[(index + 1) % 7]; // Monday, Tuesday, ..., Sunday
+        const displayDayNameAbbrev = dayName.substring(0, 3); // Sun, Mon, Tue...
+
+        button.className = `px-3 py-1 rounded text-white transition-colors ${index === state.selectedDay ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`;
+         // Highlight today's button
+        if (index === todayIndex) {
+             button.classList.add('font-bold', 'underline');
+        }
+        button.textContent = displayDayNameAbbrev;
+        button.dataset.dayIndex = index; // Store the original day index (0-6)
+
+        button.addEventListener('click', () => {
+            state.selectedDay = index; // Update selected day in state
+            renderWeeklyPlan(); // Render tasks for the newly selected day
+            // The button styling is updated by renderWeeklyPlan() at the end
+        });
+
+        elems.weeklyDaySelector.appendChild(button);
+    });
+
+     // Re-initialize feather icons if any used in day selector buttons (currently none)
+    // if (typeof feather !== 'undefined') {
+    //     feather.replace({ root: elems.weeklyDaySelector });
+    // }
+}
+
+
+// Event listener for weekly task list clicks (specifically delete)
+elems.weeklyTasksList.onclick = e => {
+    const btn = e.target.closest('button[data-action="delete-weekly"]');
+    if (!btn) return;
+
+    const indexToDelete = parseInt(btn.dataset.index);
+    const dayIndex = state.selectedDay;
+
+    if (state.weeklyPlan[dayIndex] && state.weeklyPlan[dayIndex].length > indexToDelete) {
+        // Remove the task at the specified index
+        state.weeklyPlan[dayIndex].splice(indexToDelete, 1);
+        renderWeeklyPlan(); // Re-render the list for the current day
+        saveWeeklyPlan(); // Save the updated weekly plan
+    }
+};
+
+// Event listener for the "Load Today's Plan" button
+elems.loadTodaysPlanButton.onclick = () => {
+    const todayIndex = new Date().getDay(); // Get today's day index (0-6)
+    const tasksToLoad = state.weeklyPlan[todayIndex] || [];
+
+    if (tasksToLoad.length === 0) {
+        alert("No tasks planned for today in the weekly plan.");
+        return;
+    }
+
+     if (state.tasks.some(task => task.active)) {
+        alert("Please pause or complete the active task before loading today's plan.");
+        return;
+    }
+
+    // Confirm before loading
+    if (confirm(`Load ${tasksToLoad.length} tasks from today's weekly plan into your current task list? Existing tasks will remain.`)) {
+        tasksToLoad.forEach(plannedTask => {
+            // Create a new task object suitable for the main task list
+            state.tasks.push({
+                id: Date.now() + Math.random(), // Give it a unique ID
+                text: plannedTask.text,
+                duration: plannedTask.duration,
+                remaining: plannedTask.duration, // Starts with full duration
+                active: false, // Not active initially
+                completed: false // Not completed initially
+            });
+        });
+
+        renderTasks(); // Render the main task list
+        saveTasks(); // Save the main tasks
+        alert(`${tasksToLoad.length} tasks loaded from today's plan.`);
+
+         // Automatically switch back to the current tasks view after loading
+         switchTaskView('current');
+    }
+};
+
+// Function to switch between 'current' and 'weekly' task views
+function switchTaskView(view) {
+    state.currentTaskView = view;
+
+    // Destroy existing SortableJS instance if it exists when switching away
+    if (elems.tasksListContainer.sortable) {
+        elems.tasksListContainer.sortable.destroy();
+        elems.tasksListContainer.sortable = null; // Clear the reference
+        console.log('SortableJS destroyed for current tasks.');
+    }
+
+    if (view === 'current') {
+        elems.currentTasksView.classList.remove('hidden');
+        elems.weeklyPlanContainer.classList.add('hidden');
+        elems.mainAddTaskSection.classList.remove('hidden'); // Show main add task form
+        elems.currentTasksTab.classList.add('active');
+        elems.weeklyPlanTab.classList.remove('active');
+
+        renderTasks(); // Ensure current tasks are rendered
+
+        // Initialize SortableJS after rendering tasks
+        if (elems.tasksListContainer) { // Ensure the container element exists
+            elems.tasksListContainer.sortable = Sortable.create(elems.tasksListContainer, {
+                animation: 150,
+                handle: '.drag-handle', // Specify the drag handle class added in renderTasks
+                onEnd: function (evt) {
+                    console.log('Drag ended. Updating state.');
+                    const newTaskOrder = [];
+                    // Iterate through the children of the sorted list (the DOM elements)
+                    // Use Array.from to create a static copy of the node list before iterating
+                    Array.from(elems.tasksListContainer.children).forEach(taskEl => {
+                        const taskId = parseInt(taskEl.dataset.taskId);
+                        // Find the corresponding task object in the current state.tasks array
+                        // Assumes task IDs are unique
+                        const task = state.tasks.find(t => t.id === taskId);
+                        if (task) {
+                            newTaskOrder.push(task); // Add the task object to the new ordered array
+                        } else {
+                            console.warn(`Task element with ID ${taskId} not found in state.tasks.`);
+                        }
+                    });
+                    // Update the state with the new order
+                    state.tasks = newTaskOrder;
+                    // Save the updated state to localStorage
+                    saveTasks();
+                    console.log('Tasks reordered and saved.');
+                    // No need to call renderTasks here, SortableJS already updated the DOM
+                    // If buttons were clicked while dragging, this might cause issues.
+                    // Re-rendering here would overwrite the DOM changes by SortableJS.
+                    // Manual moves already call renderTasks, which destroys and recreates SortableJS.
+                    // Drag-and-drop's onEnd updates the state from the DOM order.
+                    // This interaction seems consistent.
+                }
+            });
+            console.log('SortableJS initialized for current tasks.');
+        }
+
+
+    } else { // view === 'weekly'
+        elems.currentTasksView.classList.add('hidden');
+        elems.weeklyPlanContainer.classList.remove('hidden');
+         elems.mainAddTaskSection.classList.add('hidden'); // Hide main add task form
+        elems.currentTasksTab.classList.remove('active');
+        elems.weeklyPlanTab.classList.add('active');
+        renderDaySelector(); // Ensure day selector is rendered/updated
+        renderWeeklyPlan(); // Render weekly tasks for the selected day
+         // Re-initialize feather icons after showing/rendering weekly plan
+        if (typeof feather !== 'undefined') {
+            feather.replace({ root: elems.weeklyPlanContainer });
+        }
+    }
+}
+
+
+// Add event listeners for the tab buttons
+elems.currentTasksTab.addEventListener('click', () => switchTaskView('current'));
+elems.weeklyPlanTab.addEventListener('click', () => switchTaskView('weekly'));
+
+
+// Updates percentage achieved and wasted
+function updatePercentages() {
+  // Achieved Percentage (based on DAILY_PRODUCTIVE_HOURS)
+  const pctAchieved = Math.min((state.hoursAchieved / DAILY_PRODUCTIVE_HOURS) * 100, 100);
+  elems.percentageAchieved.textContent = `${pctAchieved.toFixed(0)}%`;
+
+  // Use base class and add color classes dynamically for achieved percentage
+  elems.percentageAchieved.className = 'text-xl font-mono mt-2 transition-all duration-500';
+  // Add colors based on achieved percentage (using calendar legend colors)
+  if (pctAchieved < 25) {
+      elems.percentageAchieved.classList.add('text-red-500');
+  } else if (pctAchieved < 50) {
+      elems.percentageAchieved.classList.add('text-yellow-400');
+  } else if (pctAchieved < 75) {
+      elems.percentageAchieved.classList.add('text-green-400');
+  } else { // 75% or more
+      elems.percentageAchieved.classList.add('text-blue-400');
+  }
+
+  // Wasted Percentage (based on DAILY_PRODUCTIVE_HOURS)
+  const wastedHours = Math.max(0, DAILY_PRODUCTIVE_HOURS - state.hoursAchieved); // Calculate wasted hours
+  const pctWasted = Math.min((wastedHours / DAILY_PRODUCTIVE_HOURS) * 100, 100);
+  elems.percentageWasted.textContent = `${pctWasted.toFixed(0)}%`;
+
+  // Use base class and add color classes dynamically for wasted percentage
+   elems.percentageWasted.className = 'text-xl font-mono mt-2 transition-all duration-500';
+  // Add colors based on wasted percentage (inverse of achieved)
+  if (pctWasted > 75) { // More than 75% wasted is bad
+       elems.percentageWasted.classList.add('text-red-500');
+   } else if (pctWasted > 50) { // 50-75% wasted
+       elems.percentageWasted.classList.add('text-yellow-400');
+   } else if (pctWasted > 25) { // 25-50% wasted
+       elems.percentageWasted.classList.add('text-green-400');
+   } else { // 0-25% wasted is good
+       elems.percentageWasted.classList.add('text-blue-400');
+   }
+
+
+  // Update daily progress (calendar) when percentage achieved changes
+  updateDailyProgress();
+}
+
+// Updates the displayed wasted hours
+function updateWastedHoursDisplay() {
+     const wastedHours = Math.max(0, DAILY_PRODUCTIVE_HOURS - state.hoursAchieved); // Calculate wasted hours
+     elems.wastedHours.textContent = wastedHours.toFixed(2);
+}
+
+
+elems.addTaskButton.onclick = () => addTask(); // Main add task button
+
+// Weekly plan add task button listener
+elems.addWeeklyTaskButton.onclick = () => addWeeklyPlanTask();
+
+
+// Updated click handler for the MAIN tasksListContainer
+elems.tasksListContainer.onclick = e => {
+  const taskElement = e.target.closest('[data-task-id]');
+  if (!taskElement) return;
+
+  const btn = e.target.closest('button'); // Find the clicked button
+  // Allow clicks on the drag handle even if it's not a button
+  const isDragHandle = e.target.closest('.drag-handle');
+
+  if (!btn && !isDragHandle) return; // Ignore clicks that are not on a button or drag handle
+  if (btn && btn.disabled) return; // Ignore disabled buttons
+
+
+  const action = btn ? btn.dataset.action : null; // Get action from button, or null
+  const taskId = parseInt(taskElement.dataset.taskId); // Get ID from parent element
+
+  const taskIndex = state.tasks.findIndex(t => t.id === taskId);
+  if (taskIndex === -1) return;
+  const task = state.tasks[taskIndex];
+
+  // Only process actions if no break is active or task is not active (except toggle on active task)
+  // and only process move actions if the task itself is not active
+  if (action === 'toggle') {
+      if (state.breakActive) {
+           alert("Please end your break before starting or pausing a task.");
+           return;
+      }
+      // Only one task can be active at a time
+      state.tasks.forEach(t => {
+          if (t.id !== task.id && t.active) {
+              t.active = false; // Pause other active tasks
+               // Save last update time for paused task
+              localStorage.setItem(`task_${t.id}_lastUpdate`, new Date().getTime());
+          }
+      });
+      task.active = !task.active;
+
+      // Save last update time for the toggled task
+      if(task.active) {
+         localStorage.setItem(`task_${task.id}_lastUpdate`, new Date().getTime());
+      } else {
+         localStorage.removeItem(`task_${task.id}_lastUpdate`); // Remove if paused
+      }
+
+  } else if (action === 'complete') { // Removed the !task.completed check here, button disabled state handles it
+     if (task.completed) return; // Double check state
+     if (state.breakActive) {
+        alert("Please end your break before completing a task.");
+        return;
+     }
+
+    // Add the time spent *up to this point* to achieved hours
+    const timeSpent = task.duration - task.remaining;
+
+    task.completed = true;
+    task.active = false; // Ensure it's inactive
+    task.remaining = 0; // Ensure remaining is 0 when completed
+
+    // Only add time achieved if time was actually spent on the task
+    if (timeSpent > 0) {
+      state.hoursAchieved += timeSpent / 3600;
+      state.hoursAchieved = parseFloat(state.hoursAchieved.toFixed(2)); // Prevent float errors
+      // elems.hoursAchieved.textContent = state.hoursAchieved.toFixed(2); // Updated by updatePercentages/updateWastedHoursDisplay
+      updatePercentages(); // Update BOTH achieved and wasted percentages/displays
+      updateWastedHoursDisplay(); // Ensure wasted hours display is also updated
+      saveHoursAchieved();
+    }
+
+     // Remove last update time for completed task
+    localStorage.removeItem(`task_${task.id}_lastUpdate`);
+
+    // Play completion sound
+    taskCompleteSound.play().catch(e => console.log('Error playing task completion sound:', e));
+
+    // Show notification
+    if (Notification.permission === 'granted') {
+      const notification = new Notification(`Task "${task.text}" Completed!`, {
+        icon: 'https://cdn-icons-png.flaticon.com/512/1055/1055183.png', // Example icon
+        body: timeSpent > 0 ? `You spent ${formatTime(timeSpent)} on "${task.text}".` : `Task "${task.text}" marked as done.`, // Show time spent if > 0
+        silent: true // We're playing our own sound
+      });
+      setTimeout(() => notification.close(), 5000);
+    }
+
+  } else if (action === 'delete') {
+      if (state.breakActive) {
+        alert("Please end your break before deleting a task.");
+        return;
+      }
+      if (task.active) {
+           alert("Please pause or complete the active task before deleting it.");
+           return;
+      }
+
+      // Before deleting, if the task was active (should be paused now per alert), add the time spent to achieved hours
+      // The alert above prevents deleting an *active* task via button.
+      // If the task was active when page closed and user clicks delete on reload before interval runs,
+      // time deduction from loadSavedData would have updated remaining.
+      // So we add timeSpent = duration - remaining.
+       const timeSpentOnDeletedTask = task.duration - task.remaining;
+        if (timeSpentOnDeletedTask > 0 && !task.completed) { // Only add if time was spent and it wasn't already completed
+            state.hoursAchieved += timeSpentOnDeletedTask / 3600;
+            state.hoursAchieved = parseFloat(state.hoursAchieved.toFixed(2));
+            // elems.hoursAchieved.textContent = state.hoursAchieved.toFixed(2); // Updated by updatePercentages/updateWastedHoursDisplay
+            updatePercentages(); // Update BOTH achieved and wasted percentages/displays
+             updateWastedHoursDisplay(); // Ensure wasted hours display is also updated
+            saveHoursAchieved();
+        }
+
+      localStorage.removeItem(`task_${task.id}_lastUpdate`);
+      state.tasks = state.tasks.filter(t => t.id !== taskId); // Use !== for comparison
+
+  } else if (action === 'up') {
+      if (task.active || state.breakActive) return; // Disabled by button state, but safety check
+      if (taskIndex > 0) {
+          // Swap in the state array using array destructuring
+          [state.tasks[taskIndex - 1], state.tasks[taskIndex]] = [state.tasks[taskIndex], state.tasks[taskIndex - 1]];
+      }
+
+  } else if (action === 'down') {
+       if (task.active || state.breakActive) return; // Disabled by button state, but safety check
+      if (taskIndex < state.tasks.length - 1) {
+           // Swap in the state array
+          [state.tasks[taskIndex], state.tasks[taskIndex + 1]] = [state.tasks[taskIndex + 1], state.tasks[taskIndex]];
+      }
+  }
+
+   // Re-render and save only if an action that modifies the list order or state occurred
+  if (action === 'toggle' || action === 'complete' || action === 'delete' || action === 'up' || action === 'down') {
+       renderTasks(); // Re-render the list (also re-initializes SortableJS)
+       saveTasks(); // Save the updated tasks state (including order)
+  }
+};
+
+
+// Add event listener for the "Clear All Tasks" button
+if (elems.clearAllTasksButton) { // Check if button exists
+    elems.clearAllTasksButton.onclick = () => {
+        if (state.tasks.some(task => task.active)) {
+            alert("Please pause or complete the active task before clearing all tasks.");
+            return;
+        }
+         if (state.breakActive) {
+            alert("Please end your break before clearing all tasks.");
+            return;
+         }
+
+        if (confirm('Are you sure you want to clear ALL tasks from your CURRENT list? This will delete all tasks from your list and stop any active timers. Your weekly plan will NOT be affected.')) { // Added clarification
+
+          // Clear all tasks in state
+          state.tasks = [];
+
+          // Clear tasks from localStorage
+          localStorage.removeItem('tasks');
+
+          // Also clear all associated task _lastUpdate timestamps from localStorage
+           for (let i = localStorage.length - 1; i >= 0; i--) { // Loop backwards while removing
+               const key = localStorage.key(i);
+               if (key && key.startsWith('task_') && key.endsWith('_lastUpdate')) { // Add check for key existence
+                   localStorage.removeItem(key);
+               }
+           }
+
+          // Update the UI
+          renderTasks(); // This also updates the total planned time
+
+          alert('All current tasks cleared.');
+        }
+    };
+}
+
+
+elems.breakContainer.onclick = e => {
+  const btn = e.target.closest('button[data-break]'); // Only listen for break buttons
+  if (btn && btn.dataset.break) {
+    // Only start break if no task is active
+    if (state.tasks.some(task => task.active)) {
+        alert("Please pause or complete the active task before starting a break.");
+        return;
+    }
+    // Convert to number explicitly
+    const durationMinutes = parseInt(btn.dataset.break);
+    state.breakTimeLeft = durationMinutes * 60;
+    state.breakActive = true;
+    renderBreak();
+    saveBreakState(); // Save break state when starting a break
+    renderTasks(); // Re-render tasks to disable buttons
+  } else if (e.target.id === 'end-break') { // Listen for the end break button
+         // Check if the end break button was clicked
+          state.breakActive = false;
+          state.breakTimeLeft = 0; // Ensure it's 0 when ended manually
+          renderBreak(); // Renders the preset buttons
+          saveBreakState(); // Save break state when ending a break (also removes timestamps)
+           renderTasks(); // Re-render tasks to re-enable buttons
+
+          // Play break end sound
+          breakEndSound.play().catch(e => console.log('Error playing break end sound:', e));
+
+          // Show notification
+          if (Notification.permission === 'granted') {
+            const notification = new Notification("Break Time is Over!", {
+              icon: 'https://cdn-icons-png.flaticon.com/512/3588/3588294.png', // Example icon
+              body: 'Time to get back to work!',
+              silent: true // We're playing our own sound
+            });
+            // Close notification after 5 seconds (optional)
+            setTimeout(() => notification.close(), 5000);
+          }
+  }
+};
+
+function renderBreak() {
+  if (state.breakActive) {
+      // Check if the break UI is already rendered to avoid flickering
+      const existingBreakTimer = elems.breakContainer.querySelector('.text-3xl.font-mono');
+      if (!existingBreakTimer) {
+           // Render the break timer UI if not already present
+           elems.breakContainer.innerHTML = `<div class="text-center"><p class="text-xl text-gray-400">Break Time:</p><p class="text-3xl font-mono text-yellow-400">${formatTime(state.breakTimeLeft)}</p><button id="end-break" class="mt-4 p-2 bg-red-600 hover:bg-red-700 text-white rounded">End Break</button></div>`; // Added text colors
+           // The event listener for #end-break is now handled by the delegated click listener on breakContainer
+      } else {
+          // Just update the time if the UI is already there
+          existingBreakTimer.textContent = formatTime(state.breakTimeLeft);
+      }
+
+  } else {
+      // Check if the preset buttons are already rendered
+      const existingBreakButtons = elems.breakContainer.querySelector('button[data-break]');
+      if (!existingBreakButtons) {
+          // Render the preset buttons if not already present
+          elems.breakContainer.innerHTML = ['5','10','15','20','30'].map(t => `<button data-break="${t}" class="p-2 bg-teal-600 hover:bg-teal-700 text-white rounded">Break ${t} min</button>`).join(''); // Added hover styles and "Break" text
+      }
+  }
+}
+
+function renderDeadline() {
+  if (!state.deadline) {
+       elems.deadlineRemaining.textContent = 'No deadline set';
+       elems.deadlineRemaining.classList.remove('text-red-500', 'text-gray-400'); // Clean up colors
+       return;
+  }
+  const now = new Date();
+  let sec = Math.floor((state.deadline - now) / 1000);
+
+  // Handle "Deadline passed" first
+   if (sec < 0) {
+       const passedSec = Math.abs(sec);
+       const showDays = elems.showDaysToggle.checked;
+       const formattedPassedTime = formatDuration(passedSec, showDays);
+       elems.deadlineRemaining.textContent = `Deadline passed by ${formattedPassedTime}`;
+       elems.deadlineRemaining.classList.add('text-red-500'); // Add color for passed deadline
+       elems.deadlineRemaining.classList.remove('text-gray-400'); // Remove default color
+       return;
+   }
+
+  // Apply sleep adjustments
+  let adjustedSec = sec;
+  if (elems.sleepToggle.checked) {
+    // Calculate full days remaining based on current 'sec' before adjustment
+    const fullDaysRemaining = Math.floor(adjustedSec / 86400);
+    adjustedSec -= fullDaysRemaining * 8 * 3600; // Subtract 8 hours for each full day remaining
+  }
+  if (elems.sleptToggle.checked) {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      // Only add if the deadline is *after* the start of today
+      if (state.deadline >= startOfToday) {
+          adjustedSec += 8 * 3600;
+      }
+  }
+
+  // Ensure adjusted seconds don't go negative after adjustments
+  adjustedSec = Math.max(0, adjustedSec);
+
+  // Now format based on the new toggle
+  const showDays = elems.showDaysToggle.checked;
+  elems.deadlineRemaining.textContent = formatDuration(adjustedSec, showDays);
+
+  // Remove passed deadline color if it's not passed
+   elems.deadlineRemaining.classList.remove('text-red-500');
+   elems.deadlineRemaining.classList.add('text-gray-400'); // Add default color back
+}
+
+elems.deadlineInput.addEventListener('change', () => {
+  state.deadline = elems.deadlineInput.value ? new Date(elems.deadlineInput.value) : null;
+  saveDeadlineSettings(); // Save deadline settings
+  renderDeadline(); // Update display immediately
+});
+elems.sleepToggle.addEventListener('change', () => {
+  renderDeadline();
+  saveDeadlineSettings(); // Save sleep toggle state
+});
+elems.sleptToggle.addEventListener('change', () => {
+  renderDeadline();
+  saveDeadlineSettings(); // Save slept toggle state
+});
+// New: Event listener for the show days toggle
+elems.showDaysToggle.addEventListener('change', () => {
+  renderDeadline(); // Update display immediately
+  saveDeadlineSettings(); // Save the state of this toggle
+});
+
+elems.darkModeToggle.onclick = () => {
+  // Toggle dark class on html element
+  const isDark = document.documentElement.classList.toggle('dark');
+
+  // Update the icon and button styling based on current mode
+  if (isDark) {
+    elems.darkModeToggle.innerHTML = '<i data-feather="sun"></i>';
+    // Use dark mode classes
+    elems.darkModeToggle.className = 'ml-4 p-2 bg-gray-700 hover:bg-gray-600 text-yellow-300 rounded-full';
+    // Save dark mode preference
+    localStorage.setItem('darkMode', 'true');
+  } else {
+    elems.darkModeToggle.innerHTML = '<i data-feather="moon"></i>';
+     // Use light mode classes
+    elems.darkModeToggle.className = 'ml-4 p-2 bg-blue-100 hover:bg-blue-200 text-indigo-700 rounded-full';
+     // Save light mode preference
+    localStorage.setItem('darkMode', 'false');
+  }
+
+  // Re-initialize feather icons after changing the icon
+  feather.replace();
+};
+
+// Load saved progress data
+function loadSavedData() {
+  // Load daily progress
+  const savedProgress = localStorage.getItem('dailyProgress');
+  if (savedProgress) {
+    try { // Add try-catch for parsing potential invalid JSON
+        state.dailyProgress = JSON.parse(savedProgress);
+        // Ensure values are numbers after loading
+        for (const date in state.dailyProgress) {
+            state.dailyProgress[date] = parseFloat(state.dailyProgress[date]) || 0;
+        }
+    } catch (e) {
+        console.error("Failed to parse daily progress from localStorage:", e);
+        state.dailyProgress = {}; // Reset if parsing fails
+    }
+  } else {
+      // Initialize dailyProgress if none is found
+      state.dailyProgress = {};
+  }
+
+
+  // Load hours achieved
+  const savedHours = localStorage.getItem('hoursAchieved');
+  if (savedHours) {
+    state.hoursAchieved = parseFloat(savedHours) || 0; // Use || 0 to handle NaN
+  } else {
+      state.hoursAchieved = 0;
+  }
+   elems.hoursAchieved.textContent = state.hoursAchieved.toFixed(2); // Update achieved hours display
+   updatePercentages(); // This recalculates BOTH percentages and updates displays, also updates daily progress for today
+   updateWastedHoursDisplay(); // Ensure wasted hours display is correct on load
+
+
+  // Load saved sleep time
+  const savedSleepTime = localStorage.getItem('sleepTime');
+  if (savedSleepTime) {
+    elems.sleepTimeInput.value = savedSleepTime;
+  } else {
+      elems.sleepTimeInput.value = '23:00'; // Default value
+  }
+
+  // Load saved tasks (main list)
+  const savedTasks = localStorage.getItem('tasks');
+  if (savedTasks) {
+     try { // Add try-catch for parsing potential invalid JSON
+        state.tasks = JSON.parse(savedTasks);
+
+        // Ensure task properties are correct types and handle state restoration
+        const now = new Date().getTime();
+        state.tasks = state.tasks.map(task => {
+            // Ensure required properties exist and have correct types
+            task.id = task.id || Date.now() + Math.random(); // Assign new ID if missing
+            task.text = task.text || 'Untitled Task';
+            task.duration = parseFloat(task.duration) || 0;
+            task.remaining = parseFloat(task.remaining) || task.duration; // Initialize remaining from duration if missing
+            task.active = Boolean(task.active); // Ensure boolean
+            task.completed = Boolean(task.completed); // Ensure boolean
+
+            // Restore state for tasks that were active when browser was closed
+            if (task.active && !task.completed) {
+              const lastUpdateKey = `task_${task.id}_lastUpdate`;
+              const lastUpdate = localStorage.getItem(lastUpdateKey);
+
+              if (lastUpdate) {
+                const elapsed = Math.floor((now - parseInt(lastUpdate)) / 1000);
+
+                if (elapsed > 0) {
+                   if (elapsed < task.remaining) {
+                     task.remaining -= elapsed;
+                   } else {
+                     // Task completed while browser was closed
+                     // Add the full task duration upon completion via timer
+                       const timeToAdd = task.duration;
+                       state.hoursAchieved += timeToAdd / 3600;
+                       state.hoursAchieved = parseFloat(state.hoursAchieved.toFixed(2)); // Prevent float errors
+                       // elems.hoursAchieved.textContent = state.hoursAchieved.toFixed(2); // Updated by updatePercentages/updateWastedHoursDisplay
+                       updatePercentages(); // Update BOTH achieved and wasted percentages/displays
+                       updateWastedHoursDisplay(); // Ensure wasted hours display is also updated
+                       saveHoursAchieved();
+
+
+                     task.remaining = 0;
+                     task.completed = true;
+                     task.active = false;
+
+                   }
+                 }
+                 // Remove last update key regardless, a new one is set if the task remains active
+                 localStorage.removeItem(lastUpdateKey);
+              } else {
+                  // If a task is active but no timestamp found (shouldn't happen if saved correctly),
+                  // assume it was just started when the browser closed. Keep it active but don't deduct time yet.
+              }
+            } else { // If task is not active or is completed
+               // Ensure no stale lastUpdate timestamp
+               localStorage.removeItem(`task_${task.id}_lastUpdate`);
+            }
+             return task; // Return the potentially modified task
+        });
+        // Filter out any tasks that might have become invalid during mapping (e.g., no text or duration)
+         state.tasks = state.tasks.filter(task => task.text && task.duration > 0);
+
+     } catch (e) {
+         console.error("Failed to parse tasks from localStorage:", e);
+         state.tasks = []; // Reset if parsing fails
+     }
+  } else {
+      state.tasks = []; // Initialize tasks if none found
+  }
+
+   // Load saved weekly plan
+   const savedWeeklyPlan = localStorage.getItem('weeklyPlan');
+   if (savedWeeklyPlan) {
+       try {
+           const parsedPlan = JSON.parse(savedWeeklyPlan);
+           // Basic validation and structure check
+           if (typeof parsedPlan === 'object' && parsedPlan !== null) {
+               state.weeklyPlan = {}; // Start fresh with valid structure
+               for (let i = 0; i < 7; i++) {
+                   const dayKey = String(i); // Keys are 0-6
+                   if (Array.isArray(parsedPlan[dayKey])) {
+                       // Ensure weekly tasks have text and duration properties
+                       state.weeklyPlan[dayKey] = parsedPlan[dayKey].map(task => ({
+                           text: task.text || 'Untitled Planned Task',
+                           duration: parseFloat(task.duration) || 0 // Ensure duration is number
+                       })).filter(task => task.text && task.duration > 0); // Filter invalid
+                   } else {
+                       state.weeklyPlan[dayKey] = []; // Initialize with empty array if invalid or missing
+                   }
+               }
+           } else {
+               console.error("Invalid weekly plan structure in localStorage.");
+               state.weeklyPlan = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] }; // Reset if invalid structure
+           }
+       } catch (e) {
+           console.error("Failed to parse weekly plan from localStorage:", e);
+           state.weeklyPlan = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] }; // Reset if parsing fails
+       }
+   } else {
+       // Initialize weeklyPlan with empty arrays for all days if none found
+       state.weeklyPlan = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+   }
+
+
+  // Load saved deadline
+  const savedDeadline = localStorage.getItem('deadline');
+  if (savedDeadline) {
+    const parsedDate = new Date(savedDeadline);
+    // Check if deadline is valid before setting state and input value
+    if (!isNaN(parsedDate.getTime())) {
+       state.deadline = parsedDate;
+       // Format date to YYYY-MM-DDTHH:MM for the input field
+       const year = parsedDate.getFullYear();
+       const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+       const day = String(parsedDate.getDate()).padStart(2, '0');
+       const hours = String(parsedDate.getHours()).padStart(2, '0');
+       const minutes = String(parsedDate.getMinutes()).padStart(2, '0');
+       elems.deadlineInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+    } else {
+       state.deadline = null; // Clear invalid deadline
+       localStorage.removeItem('deadline'); // Clean up storage
+       elems.deadlineInput.value = ''; // Clear input
+    }
+  } else {
+     state.deadline = null;
+     elems.deadlineInput.value = ''; // Clear input if no saved deadline
+  }
+
+
+  // Load saved sleep settings (default to false if null/undefined)
+  elems.sleepToggle.checked = localStorage.getItem('sleepToggle') === 'true';
+  elems.sleptToggle.checked = localStorage.getItem('sleptToggle') === 'true';
+  elems.showDaysToggle.checked = localStorage.getItem('showDaysToggle') === 'true'; // Load the new toggle state
+
+
+  // Load break state
+  const breakStartTime = localStorage.getItem('breakStartTime');
+  const breakDuration = localStorage.getItem('breakDuration');
+  const breakLastUpdate = localStorage.getItem('break_lastUpdate');
+
+  state.breakActive = false; // Assume break is not active initially on load
+  state.breakTimeLeft = 0;
+
+  if (breakStartTime && breakDuration && breakLastUpdate) {
+    const now = new Date().getTime();
+    const startTimeMs = parseInt(breakStartTime);
+    const durationSec = parseInt(breakDuration);
+    const lastUpdateMs = parseInt(breakLastUpdate);
+
+    // Basic validation
+    if (!isNaN(startTimeMs) && !isNaN(durationSec) && !isNaN(lastUpdateMs)) {
+       const totalElapsedTimeSinceStart = Math.floor((now - startTimeMs) / 1000);
+       const remaining = durationSec - totalElapsedTimeSinceStart;
+
+       if (remaining > 0) {
+         state.breakActive = true;
+         state.breakTimeLeft = remaining;
+          // Update the break_lastUpdate timestamp for the running timer
+          localStorage.setItem('break_lastUpdate', now); // Update timestamp on load if break continues
+       } else {
+         // Break ended while browser was closed
+         console.log("Break ended while page was closed.");
+         localStorage.removeItem('breakStartTime');
+         localStorage.removeItem('breakDuration');
+         localStorage.removeItem('break_lastUpdate');
+       }
+    } else {
+        console.error("Invalid break data in localStorage.");
+         // Clean up any partial break state if data is invalid
+         localStorage.removeItem('breakStartTime');
+         localStorage.removeItem('breakDuration');
+         localStorage.removeItem('break_lastUpdate');
+    }
+  } else {
+       // Clean up any partial break state if timestamps are missing
+       localStorage.removeItem('breakStartTime');
+       localStorage.removeItem('breakDuration');
+       localStorage.removeItem('break_lastUpdate');
+  }
+
+  // === Removed Dark Mode Loading Logic ===
+  // The HTML starts with class="dark", forcing dark mode on load.
+  // The initial button state in the HTML reflects dark mode.
+  // The click handler correctly updates the state and button UI on toggle.
+  // No need to explicitly load/set dark mode here based on localStorage.
+  // localStorage preference is only used BY the click handler to persist the *last selected* mode *if* they toggle away from the default dark mode.
+  // But the default on *every* load will be dark mode due to the HTML class.
+
+  // We still need to ensure the button icon/style is correct if the *saved* state was light
+  // but the current load is dark (which is always the case now).
+  // This check needs to happen *after* feather.replace() runs.
+  // Let's handle this in the DOMContentLoaded listener.
+
+  // ... (rest of loadSavedData function) ...
+}
+
+
+// Save hours achieved when updated
+function saveHoursAchieved() {
+  localStorage.setItem('hoursAchieved', state.hoursAchieved);
+}
+
+// Save tasks (main list) when updated
+function saveTasks() {
+  localStorage.setItem('tasks', JSON.stringify(state.tasks));
+}
+
+// Save weekly plan when updated
+function saveWeeklyPlan() {
+    localStorage.setItem('weeklyPlan', JSON.stringify(state.weeklyPlan));
+}
+
+// Save break state
+function saveBreakState() {
+  if (state.breakActive) {
+    // Only set startTime and Duration when break *starts* (if not already set)
+    if (!localStorage.getItem('breakStartTime')) {
+         localStorage.setItem('breakStartTime', new Date().getTime().toString()); // Store as string
+         localStorage.setItem('breakDuration', state.breakTimeLeft.toString()); // Store initial duration as string
+    }
+    localStorage.setItem('break_lastUpdate', new Date().getTime().toString()); // Always update lastUpdate while active
+  } else {
+    localStorage.removeItem('breakStartTime');
+    localStorage.removeItem('breakDuration');
+    localStorage.removeItem('break_lastUpdate');
+  }
+}
+
+// Save deadline and settings (now includes showDaysToggle and sleepTime)
+function saveDeadlineSettings() {
+  if (state.deadline && !isNaN(state.deadline.getTime())) {
+    // Save as ISO string which can be parsed back to Date
+    localStorage.setItem('deadline', state.deadline.toISOString());
+  } else {
+    localStorage.removeItem('deadline');
+  }
+  localStorage.setItem('sleepToggle', elems.sleepToggle.checked);
+  localStorage.setItem('sleptToggle', elems.sleptToggle.checked);
+  localStorage.setItem('showDaysToggle', elems.showDaysToggle.checked); // Save the new toggle state
+
+  // Save sleep time input value
+  localStorage.setItem('sleepTime', elems.sleepTimeInput.value);
+}
+
+// Add event listener for sleep time input
+elems.sleepTimeInput.addEventListener('change', () => {
+  updateSleepTimeRemaining();
+  saveDeadlineSettings(); // Save sleep time when changed
+});
+
+// Add this function to calculate and display time until sleep
+function updateSleepTimeRemaining() {
+  const now = new Date();
+  const sleepTimeValue = elems.sleepTimeInput.value;
+
+  if (!sleepTimeValue) {
+    elems.sleepTimeRemaining.textContent = "00:00:00";
+    return;
+  }
+
+  const [hours, minutes] = sleepTimeValue.split(':').map(Number);
+  if (isNaN(hours) || isNaN(minutes)) {
+       elems.sleepTimeRemaining.textContent = "Invalid Time";
+       return;
+  }
+
+  const sleepTime = new Date(now); // Start with current date
+  sleepTime.setHours(hours, minutes, 0, 0);
+
+  // If sleep time is earlier than current time (meaning it's for the next day)
+  // Adjust only if the *target time today* has already passed.
+   const targetTimeToday = new Date(now);
+   targetTimeToday.setHours(hours, minutes, 0, 0);
+
+  if (targetTimeToday.getTime() < now.getTime()) {
+     sleepTime.setDate(sleepTime.getDate() + 1);
+  }
+
+
+  const remainingSeconds = Math.max(0, Math.floor((sleepTime - now) / 1000)); // Ensure it doesn't go negative
+  elems.sleepTimeRemaining.textContent = formatTime(remainingSeconds);
+}
+
+// Add a "Reset Hours Achieved Today" button
+function addResetHoursAchievedButton() {
+  const resetHoursBtn = document.createElement('button');
+  resetHoursBtn.className = 'mt-2 p-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm w-full';
+  resetHoursBtn.textContent = 'Reset Hours Achieved Today';
+  resetHoursBtn.onclick = () => {
+    // Get today's date string
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    if (confirm(`Are you sure you want to reset your hours achieved for ${dateStr}? This will reset your achieved hours count and today's progress in the calendar.`)) {
+      // Reset hours achieved state and UI
+      state.hoursAchieved = 0;
+      saveHoursAchieved();
+
+      // Reset today's progress in the calendar state and UI
+      state.dailyProgress[dateStr] = 0;
+      localStorage.setItem('dailyProgress', JSON.stringify(state.dailyProgress));
+
+      updatePercentages(); // Recalculates and updates BOTH percentages (now 0%)
+      updateWastedHoursDisplay(); // Updates wasted hours display based on 0 achieved hours
+
+      alert(`Hours achieved and today's progress for ${dateStr} have been reset.`);
+
+       // Re-render calendar if visible
+      if (!elems.calendarSection.classList.contains('hidden')) {
+         renderCalendar();
+      }
+    }
+  };
+
+  // Add to the Hours Achieved section
+  const hoursAchievedSection = elems.hoursAchieved.parentElement; // Find the parent div of hoursAchieved text
+   // Find where to insert the button (after the percentage paragraph)
+   const insertPoint = elems.percentageAchieved;
+  if(hoursAchievedSection && insertPoint) hoursAchievedSection.insertBefore(resetHoursBtn, insertPoint.nextSibling);
+}
+
+// Add a "Reset Wasted Hours Today" button
+function addResetWastedHoursButton() {
+    const resetWastedBtn = document.createElement('button');
+    // CHANGE: Update class to use red background
+    resetWastedBtn.className = 'mt-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm w-full';
+    resetWastedBtn.textContent = 'Reset Wasted Hours Today';
+    resetWastedBtn.onclick = () => {
+         // Resetting wasted hours for today is equivalent to resetting achieved hours for today
+         // Get today's date string
+         const today = new Date();
+         const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+
+        if (confirm(`Are you sure you want to reset your wasted hours count for ${dateStr}? This will reset both wasted and achieved hours for today and today's progress in the calendar.`)) {
+            // Reset hours achieved state and UI (as wasted is derived)
+            state.hoursAchieved = 0;
+            saveHoursAchieved();
+
+            // Reset today's progress in the calendar state and UI
+            state.dailyProgress[dateStr] = 0;
+            localStorage.setItem('dailyProgress', JSON.stringify(state.dailyProgress));
+
+            updatePercentages(); // Recalculates and updates BOTH percentages (wasted becomes 100%)
+            updateWastedHoursDisplay(); // Updates wasted hours display based on 0 achieved hours
+
+            alert(`Wasted and achieved hours and today's progress for ${dateStr} have been reset.`);
+
+             // Re-render calendar if visible
+            if (!elems.calendarSection.classList.contains('hidden')) {
+               renderCalendar();
+            }
+        }
+    };
+
+     // Add to the Wasted Hours section
+    const wastedHoursSection = elems.wastedHours.parentElement; // Find the parent div of wastedHours text
+    // Find where to insert the button (after the percentage paragraph)
+    const insertPoint = elems.percentageWasted;
+    if(wastedHoursSection && insertPoint) wastedHoursSection.insertBefore(resetWastedBtn, insertPoint.nextSibling);
+}
+
+
+// Add a "Clear All Data" button (most drastic)
+function addClearAllDataButton() {
+  const clearDataBtn = document.createElement('button');
+  clearDataBtn.className = 'mt-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm w-full';
+  clearDataBtn.textContent = 'Clear ALL Saved Data';
+  clearDataBtn.onclick = () => {
+    if (confirm('WARNING: This will delete ALL saved data (tasks, weekly plan, hours, calendar history, deadline, settings, break state). Are you absolutely sure? This action cannot be undone.')) {
+      if (confirm('Seriously, all data will be permanently lost. Click OK to proceed with clearing ALL data. THIS IS THE FINAL WARNING.')) { // Added more prominent warning
+          localStorage.clear();
+          // Reset in-memory state to default
+          state.tasks = [];
+           state.weeklyPlan = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] }; // Reset weekly plan
+           state.selectedDay = new Date().getDay(); // Reset selected day
+           state.currentTaskView = 'current'; // Reset view to default
+          state.hoursAchieved = 0; // Reset achieved hours
+          state.deadline = null;
+          state.breakActive = false;
+          state.breakTimeLeft = 0;
+          state.dailyProgress = {}; // Clear calendar history
+
+          // Reset UI elements to their default/empty states
+
+           // Reset achieved/wasted hour displays and percentages
+          elems.hoursAchieved.textContent = '0.00';
+          elems.wastedHours.textContent = DAILY_PRODUCTIVE_HOURS.toFixed(2); // Reset wasted hours to max
+          updatePercentages(); // Resets percentages (achieved 0%, wasted 100%) and updates calendar (if visible) with empty history
+
+
+          // Reset task views
+          switchTaskView('current'); // Switches to current view and renders it
+
+          elems.deadlineInput.value = '';
+          // Reset deadline related toggles and display
+          elems.sleepToggle.checked = false;
+          elems.sleptToggle.checked = false;
+          elems.showDaysToggle.checked = false; // Reset the new toggle
+          renderDeadline(); // Updates deadline display based on reset toggles
+
+          elems.sleepTimeInput.value = '23:00'; // Reset sleep time input to default
+          updateSleepTimeRemaining(); // Update the sleep time display
+
+          renderBreak(); // Resets break section UI
+
+          // Reset calendar view to current month after clearing data
+          currentDate = new Date();
+          currentMonth = currentDate.getMonth();
+          currentYear = currentDate.getFullYear();
+          // Only re-render calendar if it's currently visible
+          if (!elems.calendarSection.classList.contains('hidden')) {
+            renderCalendar();
+          }
+
+           // Reset dark mode toggle button display to match default dark mode
+           const isDark = document.documentElement.classList.contains('dark'); // Should be true
+           if (isDark) {
+                elems.darkModeToggle.innerHTML = '<i data-feather="sun"></i>';
+                elems.darkModeToggle.className = 'ml-4 p-2 bg-gray-700 hover:bg-gray-600 text-yellow-300 rounded-full';
+           } else { // Should not happen with html class="dark", but good fallback
+                elems.darkModeToggle.innerHTML = '<i data-feather="moon"></i>';
+                elems.darkModeToggle.className = 'ml-4 p-2 bg-blue-100 hover:bg-blue-200 text-indigo-700 rounded-full';
+           }
+           // Re-initialize feather icons for the button
+           if (typeof feather !== 'undefined') {
+               feather.replace();
+           }
+
+
+          alert('All saved data has been cleared.');
+          // Optional: Reload page for a full clean slate experience
+          // window.location.reload();
+      }
+    }
+  };
+
+   // Add to the Hours Achieved section (below the other reset buttons)
+   const hoursAchievedSection = elems.hoursAchieved.parentElement;
+    // Find where to insert the button (after the achieved reset button)
+    // We need to find the achieved reset button first. This requires it to be added before this one.
+    // Let's get the div and append it at the end. Order matters.
+    if(hoursAchievedSection) hoursAchievedSection.appendChild(clearDataBtn);
+}
+
+
+// Update the setInterval function
+setInterval(() => {
+  const now = new Date();
+  elems.time.textContent = now.toLocaleTimeString(); // Display current time
+
+  // Remaining Today (Until midnight)
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999); // Set to the very end of today
+  elems.remainingToday.textContent = formatTime(Math.max(0, Math.floor((endOfToday - now) / 1000))); // Ensure non-negative
+
+  // Update sleep time remaining
+  updateSleepTimeRemaining();
+
+  // Task countdown - ONLY process tasks in the main state.tasks array
+  // Optimize by updating time spans directly instead of full re-render
+  // No longer need stateSavedForInterval flag as interval doesn't save
+
+  let achievedThisInterval = 0; // Track total seconds achieved in this interval across all tasks
+
+  state.tasks.forEach(task => {
+      // Find the specific task element in the DOM by its data-task-id
+      const taskElementInDom = elems.tasksListContainer.querySelector(`[data-task-id="${task.id}"]`);
+
+      // If the task is active AND not completed AND its UI element exists
+      if (task.active && !task.completed && task.remaining > 0 && taskElementInDom) {
+            const timerSpan = taskElementInDom.querySelector('p.font-mono'); // Find the timer span
+
+
+            const lastUpdateKey = `task_${task.id}_lastUpdate`;
+            const lastUpdate = localStorage.getItem(lastUpdateKey);
+            // Use the stored timestamp or assume 'now' if none (e.g.g., first tick after load/start)
+            // Use current time if lastUpdate is missing or invalid
+            const lastUpdateTime = lastUpdate ? parseInt(lastUpdate) : now.getTime();
+
+            // Calculate elapsed time since the last tick/update
+            // We should calculate based on the difference between *now* and the *last saved timestamp*.
+            // This ensures that even if setInterval is delayed, the time deduction is correct.
+            const elapsedSinceLastUpdate = Math.floor((now.getTime() - lastUpdateTime) / 1000);
+
+
+            if (elapsedSinceLastUpdate > 0) {
+               const timeToDeduct = Math.min(elapsedSinceLastUpdate, task.remaining);
+               task.remaining -= timeToDeduct;
+
+                // Add deducted time to achieved amount *only for running timers*
+                // This makes the achieved hours tick up while a task is running, not just on completion.
+                // Add to a temporary counter for this interval.
+               achievedThisInterval += timeToDeduct;
+
+
+               // Update the specific task's timer element directly
+               if (timerSpan) {
+                   timerSpan.textContent = formatTime(task.remaining);
+                   timerSpan.classList.add('text-green-400'); // Timer is green when active
+                   timerSpan.classList.remove('text-gray-400', 'text-blue-400');
+               }
+
+               // Save the new last update time for the task
+               // This should happen AFTER we've processed the elapsed time
+               localStorage.setItem(lastUpdateKey, now.getTime());
+
+               // No interval-based saving needed.
+
+            }
+
+
+            if (task.remaining <= 0) {
+              task.remaining = 0; // Ensure it's not negative
+
+               // The time has already been added to achievedThisInterval as it counted down.
+               // No need to add the full duration here anymore.
+
+              task.completed = true;
+              task.active = false;
+
+              // Remove last update time for completed task
+              localStorage.removeItem(lastUpdateKey);
+
+              // Update UI for completed task immediately (or trigger a re-render)
+              // Triggering a re-render is simpler than manually updating all elements here.
+               renderTasks(); // Re-render to update styles, disable buttons, etc.
+
+              // Save state after task completion
+              saveTasks(); // Saves completed state
+
+
+              // Play completion sound
+              taskCompleteSound.play().catch(e => console.log('Error playing task completion sound:', e));
+
+              // Show notification
+              if (Notification.permission === 'granted') {
+                const notification = new Notification(`Task "${task.text}" Completed!`, {
+                  icon: 'https://cdn-icons-png.flaticon.com/512/1055/1055183.png',
+                  body: `You've completed your task: ${task.text}.`, // Body simplified as time is added gradually
+                  silent: true
+                });
+                setTimeout(() => notification.close(), 5000);
+              }
+            }
+          } else if (taskElementInDom) { // Task element exists, but task is not active or completed
+               // Ensure no stale lastUpdate timestamp if task is not active
+               localStorage.removeItem(`task_${task.id}_lastUpdate`);
+
+               // Manually update UI elements for non-active tasks if they exist in the DOM,
+               // in case they were loaded or state changed outside the timer loop.
+               const timerSpan = taskElementInDom.querySelector('p.font-mono');
+               const taskTitle = taskElementInDom.querySelector('h3');
+
+               if (taskTitle) {
+                   taskTitle.classList.toggle('line-through', task.completed);
+                   taskTitle.classList.toggle('text-gray-400', task.completed);
+                   taskTitle.classList.toggle('text-white', !task.completed);
+               }
+               if (timerSpan) {
+                   timerSpan.textContent = formatTime(task.remaining); // Ensure time is correct
+                   timerSpan.classList.toggle('text-green-400', task.active);
+                   timerSpan.classList.toggle('text-blue-400', task.completed);
+                   timerSpan.classList.toggle('text-gray-400', !task.active && !task.completed); // Paused or not started
+               }
+               // Button states are handled by renderTasks when it's called on state changes.
+          }
+       }); // End state.tasks.forEach
+
+   // Add the total achieved time from this interval to the state
+   if (achievedThisInterval > 0) {
+       state.hoursAchieved += achievedThisInterval / 3600;
+       state.hoursAchieved = parseFloat(state.hoursAchieved.toFixed(2)); // Prevent float errors
+        // Update displays and save after adding time
+       elems.hoursAchieved.textContent = state.hoursAchieved.toFixed(2); // Update achieved display immediately
+       updatePercentages(); // Update percentages and trigger calendar update if needed
+       updateWastedHoursDisplay(); // Update wasted display immediately
+       saveHoursAchieved(); // Save the updated achieved hours
+   }
+
+
+  // Break countdown - Optimize by updating time span directly
+  if (state.breakActive && state.breakTimeLeft > 0) {
+    const breakTimerElement = elems.breakContainer.querySelector('.text-3xl.font-mono'); // Corrected element variable name
+     if (breakTimerElement) { // Check if the break timer element exists in the DOM
+        const lastUpdateKey = `break_lastUpdate`;
+        const lastUpdate = localStorage.getItem(lastUpdateKey);
+         // Use the stored timestamp or assume 'now' if none (e.g., first tick after load/start)
+        const lastUpdateTime = lastUpdate ? parseInt(lastUpdate) : now.getTime();
+        const elapsedSinceLastUpdate = Math.floor((now.getTime() - lastUpdateTime) / 1000);
+
+
+        if (elapsedSinceLastUpdate > 0) {
+           const timeToDeduct = Math.min(elapsedSinceLastUpdate, state.breakTimeLeft);
+           state.breakTimeLeft -= timeToDeduct;
+           localStorage.setItem(lastUpdateKey, now.getTime()); // Save new last update time
+
+           // No interval-based saving needed.
+        }
+
+        // Update the time display in the DOM
+        breakTimerElement.textContent = formatTime(state.breakTimeLeft);
+
+        if (state.breakTimeLeft <= 0) {
+          state.breakActive = false;
+          state.breakTimeLeft = 0; // Ensure it's 0
+          // localStorage.removeItem(lastUpdateKey); // Clean up timestamp - Handled by saveBreakState
+          renderBreak(); // This line ensures the UI updates when break ends
+          saveBreakState(); // Save state after break ends (cleans up all break storage)
+           renderTasks(); // Re-render tasks to re-enable buttons
+
+          // Play break end sound
+          breakEndSound.play().catch(e => console.log('Error playing break end sound:', e));
+
+          // Show notification
+          if (Notification.permission === 'granted') {
+            const notification = new Notification("Break Time is Over!", {
+              icon: 'https://cdn-icons-png.flaticon.com/512/3588/3588294.png', // Example icon (correcting typo in original)
+              body: 'Time to get back to work!',
+              silent: true // We're playing our own sound
+            });
+            setTimeout(() => notification.close(), 5000);
+          }
+        }
+     }
+  } else {
+       // Ensure no stale lastUpdate timestamp if break is not active
+       localStorage.removeItem(`break_lastUpdate`); // Double check cleanup
+  }
+
+
+  // Update deadline remaining time
+  renderDeadline();
+
+   // Saving on visibilitychange provides backup.
+   // Rely on visibilitychange and explicit saves outside the interval loop.
+
+}, 1000); // Run every second
+
+
+// Add event listener for page visibility changes
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    // Page is now visible again, reload data and re-render
+    console.log("Page visible, reloading data...");
+    loadSavedData(); // This loads all state (tasks, weeklyPlan, hours, deadline, settings, break), updates percentage, calls renderDeadline etc.
+    // After loading, render the *correct* view based on state.currentTaskView
+    switchTaskView(state.currentTaskView); // This renders either main tasks or weekly plan
+
+    renderBreak(); // Ensure break UI is rendered
+    updateSleepTimeRemaining(); // Call again to ensure sleep time is correct
+
+    // If calendar is open, re-render it
+    if (!elems.calendarSection.classList.contains('hidden')) {
+      renderCalendar();
+    }
+     // Re-initialize feather icons everywhere after loading/rendering
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+
+  } else {
+     // Page is hidden, save the current state
+     console.log("Page hidden, saving data...");
+     // The interval loop updates lastUpdate timestamps for active timers *before* the page hides if an interval tick occurs.
+     // Saving the state here provides a backup, ensuring the latest `remaining` times and `active` states are saved.
+     // The lastUpdate timestamps help reconstruct the exact state on reload even if the save here is slightly old.
+     saveTasks(); // Saves task remaining times and states
+     saveWeeklyPlan(); // Save the weekly plan state
+     saveBreakState(); // Saves break state (including lastUpdate for break)
+     saveHoursAchieved(); // Saves achieved hours (which was updated by the interval loop)
+     localStorage.setItem('dailyProgress', JSON.stringify(state.dailyProgress)); // Save daily progress
+     saveDeadlineSettings(); // Save deadline and settings (including sleep time and toggles)
+     // state.currentTaskView is implicitly saved by `loadSavedData` picking the default 'current' or by adding persistence later if needed. For now, it defaults on load.
+  }
+});
+
+// Wait for DOM to be fully loaded before initialising
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize
+    loadSavedData(); // Loads ALL state (tasks, weeklyPlan, hours, deadline, settings, break), updates percentages, calls renderDeadline etc.
+
+    renderPresets(); // Renders main task presets
+
+    // Add utility buttons dynamically to the correct sections
+    addResetHoursAchievedButton(); // Adds to Hours Achieved section
+    addResetWastedHoursButton(); // Adds to Wasted Hours section
+    // addClearTasksAndBreakButton(); // Removed as requested
+    addClearAllDataButton(); // Adds to Hours Achieved section
+
+    // Initialize the weekly plan day selector buttons
+    renderDaySelector(); // Needs dayNames and state.selectedDay
+
+    // Render the correct view based on the loaded state (defaults to 'current')
+    // This will call either renderTasks() or renderWeeklyPlan() internally
+    // SortableJS initialization is now handled *inside* switchTaskView('current')
+    switchTaskView(state.currentTaskView);
+
+
+    renderBreak(); // Ensure break section is rendered based on loaded state
+    updateSleepTimeRemaining(); // Call once initially to display the correct time until sleep on load
+
+
+     // Re-initialize feather icons after initial render and adding dynamic buttons
+    // This is important because the dynamic buttons also use feather icons.
+    // It also ensures the initial dark mode button icon is rendered.
+    // Icons inside task/weekly lists are now replaced by renderTasks/renderWeeklyPlan/switchTaskView.
+    if (typeof feather !== 'undefined') {
+        feather.replace(); // Replace icons that are part of the static HTML and dynamically added buttons outside task lists
+    }
+
+    // Initial render of calendar if it was saved as not hidden (though currently it starts hidden)
+    // You might want to add state to save calendar visibility if desired.
+    // For now, it starts hidden and is rendered when the toggle button is clicked.
+    // renderCalendar(); // Called when toggle is clicked now.
+});
+
+
+</script>
+</body>
+</html>

@@ -182,7 +182,12 @@
         </div>
         <div class="flex items-center justify-center gap-2 mt-2">
           <input id="slept-today-toggle" type="checkbox" class="h-5 w-5 text-blue-600">
-          <label for="slept-today-toggle" class="text-sm">Add 8 hours I slept already</label>
+          <label for="slept-today-toggle" class="text-sm">Exclude 8 hours I slept already</label>
+        </div>
+        <!-- New: No Sleep Toggle -->
+        <div class="flex items-center justify-center gap-2 mt-2">
+          <input id="no-sleep-toggle" type="checkbox" class="h-5 w-5 text-blue-600">
+          <label for="no-sleep-toggle" class="text-sm">Add 8 hours I didn't sleep</label>
         </div>
          <!-- New: Show Days Toggle -->
         <div class="flex items-center justify-center gap-2 mt-2">
@@ -361,7 +366,8 @@ const state = {
   deadline: null,
   breakActive: false,
   breakTimeLeft: 0,
-  dailyProgress: {} // New state for tracking daily progress percentage
+  dailyProgress: {}, // New state for tracking daily progress percentage
+  noSleepToggle: false // New state for tracking "didn't sleep" option
 };
 
 // Define the total potential productive hours in a day (24 total - 8 sleep = 16)
@@ -373,6 +379,7 @@ const elems = {
   deadlineInput: document.getElementById('deadline-input'),
   sleepToggle: document.getElementById('sleep-toggle'),
   sleptToggle: document.getElementById('slept-today-toggle'),
+  noSleepToggle: document.getElementById('no-sleep-toggle'), // New element
   showDaysToggle: document.getElementById('show-days-toggle'), // New element
   deadlineRemaining: document.getElementById('deadline-remaining'),
 
@@ -1362,12 +1369,12 @@ function renderDeadline() {
     adjustedSec -= fullDaysRemaining * 8 * 3600; // Subtract 8 hours for each full day remaining
   }
   if (elems.sleptToggle.checked) {
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      // Only add if the deadline is *after* the start of today
-      if (state.deadline >= startOfToday) {
-          adjustedSec += 8 * 3600;
-      }
+      // Exclude 8 hours I slept already (subtract 8 hours)
+      adjustedSec -= 8 * 3600;
+  }
+  if (elems.noSleepToggle.checked) {
+      // Add 8 hours I didn't sleep
+      adjustedSec += 8 * 3600;
   }
 
   // Ensure adjusted seconds don't go negative after adjustments
@@ -1394,6 +1401,11 @@ elems.sleepToggle.addEventListener('change', () => {
 elems.sleptToggle.addEventListener('change', () => {
   renderDeadline();
   saveDeadlineSettings(); // Save slept toggle state
+});
+// New: Event listener for the no sleep toggle
+elems.noSleepToggle.addEventListener('change', () => {
+  renderDeadline();
+  saveDeadlineSettings(); // Save the state of this toggle
 });
 // New: Event listener for the show days toggle
 elems.showDaysToggle.addEventListener('change', () => {
@@ -1597,6 +1609,7 @@ function loadSavedData() {
   // Load saved sleep settings (default to false if null/undefined)
   elems.sleepToggle.checked = localStorage.getItem('sleepToggle') === 'true';
   elems.sleptToggle.checked = localStorage.getItem('sleptToggle') === 'true';
+  elems.noSleepToggle.checked = localStorage.getItem('noSleepToggle') === 'true'; // Load the no sleep toggle state
   elems.showDaysToggle.checked = localStorage.getItem('showDaysToggle') === 'true'; // Load the new toggle state
 
 
@@ -1703,6 +1716,7 @@ function saveDeadlineSettings() {
   }
   localStorage.setItem('sleepToggle', elems.sleepToggle.checked);
   localStorage.setItem('sleptToggle', elems.sleptToggle.checked);
+  localStorage.setItem('noSleepToggle', elems.noSleepToggle.checked); // Save the no sleep toggle state
   localStorage.setItem('showDaysToggle', elems.showDaysToggle.checked); // Save the new toggle state
 
   // Save sleep time input value

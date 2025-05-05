@@ -113,6 +113,11 @@
         cursor: grabbing;
     }
 
+    /* Smooth scrolling for tasks container */
+    #tasks-list-container {
+      scroll-margin-top: 6rem; /* Adjust based on header height + padding */
+    }
+
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col items-center py-8">
@@ -604,7 +609,16 @@ function renderPresets() {
     const btn = document.createElement('button');
     btn.className = 'p-2 bg-teal-600 hover:bg-teal-700 text-white rounded';
     btn.textContent = `${p.text} (${p.duration} min)`;
-    btn.onclick = () => addTask(p.text, p.duration); // This adds to the main task list
+    btn.onclick = () => {
+      addTask(p.text, p.duration); // This adds to the main task list
+      // Scroll to the tasks section after adding from preset
+      setTimeout(() => {
+        const tasksSection = document.querySelector('section:has(#current-tasks-view)'); // Get the section wrapper
+        if (tasksSection) {
+          tasksSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 0); // Use 0ms delay to allow DOM update
+    };
     elems.presetContainer.appendChild(btn);
   });
 }
@@ -617,10 +631,21 @@ function addTask(text, minutes) {
       alert('Please enter task text and select a valid duration.'); // User feedback
       return; // Ensure task text and duration are valid
   }
-  state.tasks.push({ id: Date.now(), text: taskText, duration: duration, remaining: duration, active: false, completed: false });
+  const newTask = { id: Date.now(), text: taskText, duration: duration, remaining: duration, active: false, completed: false };
+  state.tasks.push(newTask);
   elems.newTaskInput.value = '';
   renderTasks(); // Render the main task list
   saveTasks(); // Save tasks after adding
+
+  // Scroll to the newly added task after rendering
+  // Use setTimeout to ensure the element exists in the DOM before scrolling
+  setTimeout(() => {
+    // Find the task element by its unique ID
+    const taskElement = elems.tasksListContainer.querySelector(`[data-task-id="${newTask.id}"]`);
+    if (taskElement) {
+      taskElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, 50); // Small delay (e.g., 50ms) to allow the DOM to update
 }
 
 // Add task to the WEEKLY PLAN for the selected day
@@ -1466,7 +1491,7 @@ function loadSavedData() {
   }
    elems.hoursAchieved.textContent = state.hoursAchieved.toFixed(2); // Update achieved hours display
    updatePercentages(); // This recalculates BOTH percentages and updates displays, also updates daily progress for today
-   updateWastedHoursDisplay(); // Ensure wasted hours display is correct on load
+   updateWastedHoursDisplay(); // Ensure wasted hours display is also correct on load
 
 
   // Load saved sleep time
@@ -1877,6 +1902,7 @@ function addClearAllDataButton() {
           // Reset deadline related toggles and display
           elems.sleepToggle.checked = false;
           elems.sleptToggle.checked = false;
+          elems.noSleepToggle.checked = false; // Reset the new toggle
           elems.showDaysToggle.checked = false; // Reset the new toggle
           renderDeadline(); // Updates deadline display based on reset toggles
 

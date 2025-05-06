@@ -7,8 +7,7 @@
   <!-- Added link for Inter font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <!-- Removed 'defer' from feather-icons script to ensure it loads before DOMContentLoaded -->
-  <script src="https://unpkg.com/feather-icons"></script>
+  <script defer src="https://unpkg.com/feather-icons"></script>
   <!-- SortableJS for drag and drop -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
@@ -530,8 +529,7 @@ elems.toggleCalendar.addEventListener('click', () => {
   elems.toggleCalendar.textContent = isHidden ? 'Hide Calendar' : 'Show Calendar';
   if (isHidden) {
     renderCalendar();
-    // Feather icons are now replaced inside renderCalendar
-    // feather.replace(); // Re-initialize feather icons - Handled by renderCalendar
+    feather.replace(); // Re-initialize feather icons
   }
 });
 
@@ -643,11 +641,6 @@ function renderCalendar() {
 
     elems.calendarDays.appendChild(dayElem);
   }
-
-    // Re-initialize feather icons within the calendar section
-    if (typeof feather !== 'undefined') {
-        feather.replace({ root: elems.calendarSection });
-    }
 }
 
 // Update daily progress based on achieved hours
@@ -671,7 +664,7 @@ function updateDailyProgress() {
 
       // Update calendar if visible
       if (!elems.calendarSection.classList.contains('hidden')) {
-        renderCalendar(); // Calendar re-renders with new data
+        renderCalendar();
       }
   }
 }
@@ -694,10 +687,6 @@ function renderPresets() {
     };
     elems.presetContainer.appendChild(btn);
   });
-    // Re-initialize feather icons within the preset container (although none used here currently)
-    // if (typeof feather !== 'undefined') {
-    //     feather.replace({ root: elems.presetContainer });
-    // }
 }
 
 // Add task to the MAIN task list (the one with timers)
@@ -711,7 +700,7 @@ function addTask(text, minutes) {
   const newTask = { id: Date.now(), text: taskText, duration: duration, remaining: duration, active: false, completed: false };
   state.tasks.push(newTask);
   elems.newTaskInput.value = '';
-  renderTasks(); // Render the main task list (includes feather.replace for task list)
+  renderTasks(); // Render the main task list
   saveTasks(); // Save tasks after adding
 
   // Scroll to the newly added task after rendering
@@ -743,7 +732,7 @@ function addWeeklyPlanTask() {
     state.weeklyPlan[dayIndex].push({ text: taskText, duration: duration });
 
     elems.weeklyTaskInput.value = ''; // Clear input
-    renderWeeklyPlan(); // Re-render the weekly plan for the current day (includes feather.replace for weekly list)
+    renderWeeklyPlan(); // Re-render the weekly plan for the current day
     saveWeeklyPlan(); // Save the weekly plan
 }
 
@@ -979,10 +968,9 @@ function renderWeeklyPlan() {
          }
      });
       // Re-initialize feather icons if any used in day selector buttons (currently none)
-     if (typeof feather !== 'undefined') {
-         // feather.replace({ root: elems.weeklyPlanContainer }); // Already called in switchTaskView
-         feather.replace({ root: elems.weeklyTasksList }); // Re-replace icons in the list items
-     }
+     // if (typeof feather !== 'undefined') {
+     //     feather.replace({ root: elems.weeklyTasksList });
+     // }
 }
 
 
@@ -1033,7 +1021,7 @@ elems.weeklyTasksList.onclick = e => {
     if (state.weeklyPlan[dayIndex] && state.weeklyPlan[dayIndex].length > indexToDelete) {
         // Remove the task at the specified index
         state.weeklyPlan[dayIndex].splice(indexToDelete, 1);
-        renderWeeklyPlan(); // Re-render the list for the current day (includes feather.replace for weekly list)
+        renderWeeklyPlan(); // Re-render the list for the current day
         saveWeeklyPlan(); // Save the updated weekly plan
     }
 };
@@ -1067,12 +1055,12 @@ elems.loadTodaysPlanButton.onclick = () => {
             });
         });
 
-        renderTasks(); // Render the main task list (includes feather.replace for task list)
+        renderTasks(); // Render the main task list
         saveTasks(); // Save the main tasks
         alert(`${tasksToLoad.length} tasks loaded from today's plan.`);
 
          // Automatically switch back to the current tasks view after loading
-         switchTaskView('current'); // This calls renderTasks which replaces icons
+         switchTaskView('current');
     }
 };
 
@@ -1094,7 +1082,7 @@ function switchTaskView(view) {
         elems.currentTasksTab.classList.add('active');
         elems.weeklyPlanTab.classList.remove('active');
 
-        renderTasks(); // Ensure current tasks are rendered (includes feather.replace for task list)
+        renderTasks(); // Ensure current tasks are rendered
 
         // Initialize SortableJS after rendering tasks
         if (elems.tasksListContainer) { // Ensure the container element exists
@@ -1141,10 +1129,10 @@ function switchTaskView(view) {
         elems.currentTasksTab.classList.remove('active');
         elems.weeklyPlanTab.classList.add('active');
         renderDaySelector(); // Ensure day selector is rendered/updated
-        renderWeeklyPlan(); // Render weekly tasks for the selected day (includes feather.replace for weekly list)
+        renderWeeklyPlan(); // Render weekly tasks for the selected day
          // Re-initialize feather icons after showing/rendering weekly plan
         if (typeof feather !== 'undefined') {
-            feather.replace({ root: elems.weeklyPlanContainer }); // Replace icons in the overall weekly container
+            feather.replace({ root: elems.weeklyPlanContainer });
         }
     }
 }
@@ -1194,7 +1182,7 @@ function updatePercentages() {
 
 
   // Update daily progress (calendar) when percentage achieved changes
-  updateDailyProgress(); // This calls renderCalendar if visible
+  updateDailyProgress();
 }
 
 // Updates the displayed wasted hours
@@ -1242,20 +1230,16 @@ elems.tasksListContainer.onclick = e => {
           if (t.id !== task.id && t.active) {
               t.active = false; // Pause other active tasks
                // Save last update time for paused task
-              localStorage.setItem(`task_${t.id}_lastUpdate`, new Date().getTime()); // Not strictly needed with new time calculation, but harmless
+              localStorage.setItem(`task_${t.id}_lastUpdate`, new Date().getTime());
           }
       });
       task.active = !task.active;
 
-      // Save start timestamp when task becomes active
+      // Save last update time for the toggled task
       if(task.active) {
-         task.startTimestamp = new Date().getTime();
-         localStorage.setItem(`task_${task.id}_startTime`, task.startTimestamp);
+         localStorage.setItem(`task_${task.id}_lastUpdate`, new Date().getTime());
       } else {
-         // On pause, remove start timestamp and save last remaining time
-         localStorage.removeItem(`task_${task.id}_startTime`);
-         // The interval would have updated task.remaining just before pausing/page unload,
-         // so saving state here should be sufficient.
+         localStorage.removeItem(`task_${task.id}_lastUpdate`); // Remove if paused
       }
 
   } else if (action === 'complete') { // Removed the !task.completed check here, button disabled state handles it
@@ -1265,25 +1249,25 @@ elems.tasksListContainer.onclick = e => {
         return;
      }
 
-    // Time spent is already added gradually by the interval loop for active tasks.
-    // If completing a paused task, any time spent was already added.
-    // So no extra time needs to be added here upon completion click.
+    // Add the time spent *up to this point* to achieved hours
+    const timeSpent = task.duration - task.remaining;
 
     task.completed = true;
     task.active = false; // Ensure it's inactive
     task.remaining = 0; // Ensure remaining is 0 when completed
-     task.startTimestamp = null; // Clear the timestamp
 
-     // Remove stored timestamps
-    localStorage.removeItem(`task_${task.id}_startTime`);
-    localStorage.removeItem(`task_${task.id}_lastUpdate`); // Just in case
+    // Only add time achieved if time was actually spent on the task
+    if (timeSpent > 0) {
+      state.hoursAchieved += timeSpent / 3600;
+      state.hoursAchieved = parseFloat(state.hoursAchieved.toFixed(2)); // Prevent float errors
+      // elems.hoursAchieved.textContent = state.hoursAchieved.toFixed(2); // Updated by updatePercentages/updateWastedHoursDisplay
+      updatePercentages(); // Update BOTH achieved and wasted percentages/displays
+      updateWastedHoursDisplay(); // Ensure wasted hours display is also updated
+      saveHoursAchieved();
+    }
 
-    // Update achieved/wasted percentages and displays (already handled by interval, but call for immediate update)
-    updatePercentages();
-    updateWastedHoursDisplay();
-    // Save achieved hours (already handled by interval, but save state again)
-    saveHoursAchieved();
-
+     // Remove last update time for completed task
+    localStorage.removeItem(`task_${task.id}_lastUpdate`);
 
     // Play completion sound
     taskCompleteSound.play().catch(e => console.log('Error playing task completion sound:', e));
@@ -1292,7 +1276,7 @@ elems.tasksListContainer.onclick = e => {
     if (Notification.permission === 'granted') {
       const notification = new Notification(`Task "${task.text}" Completed!`, {
         icon: 'https://cdn-icons-png.flaticon.com/512/1055/1055183.png', // Example icon
-        body: `You've completed your task: ${task.text}.`, // Body simplified as time is added gradually
+        body: timeSpent > 0 ? `You spent ${formatTime(timeSpent)} on "${task.text}".` : `Task "${task.text}" marked as done.`, // Show time spent if > 0
         silent: true // We're playing our own sound
       });
       setTimeout(() => notification.close(), 5000);
@@ -1308,13 +1292,22 @@ elems.tasksListContainer.onclick = e => {
            return;
       }
 
-      // If time was spent on this task *before* pausing/deleting (and it wasn't completed),
-      // that time was already added to achieved hours by the interval loop.
-      // So no extra time needs to be added here.
+      // Before deleting, if the task was active (should be paused now per alert), add the time spent to achieved hours
+      // The alert above prevents deleting an *active* task via button.
+      // If the task was active when page closed and user clicks delete on reload before interval runs,
+      // time deduction from loadSavedData would have updated remaining.
+      // So we add timeSpent = duration - remaining.
+       const timeSpentOnDeletedTask = task.duration - task.remaining;
+        if (timeSpentOnDeletedTask > 0 && !task.completed) { // Only add if time was spent and it wasn't already completed
+            state.hoursAchieved += timeSpentOnDeletedTask / 3600;
+            state.hoursAchieved = parseFloat(state.hoursAchieved.toFixed(2));
+            // elems.hoursAchieved.textContent = state.hoursAchieved.toFixed(2); // Updated by updatePercentages/updateWastedHoursDisplay
+            updatePercentages(); // Update BOTH achieved and wasted percentages/displays
+             updateWastedHoursDisplay(); // Ensure wasted hours display is also updated
+            saveHoursAchieved();
+        }
 
-      localStorage.removeItem(`task_${task.id}_startTime`); // Remove stored timestamps
       localStorage.removeItem(`task_${task.id}_lastUpdate`);
-
       state.tasks = state.tasks.filter(t => t.id !== taskId); // Use !== for comparison
 
   } else if (action === 'up') {
@@ -1334,7 +1327,7 @@ elems.tasksListContainer.onclick = e => {
 
    // Re-render and save only if an action that modifies the list order or state occurred
   if (action === 'toggle' || action === 'complete' || action === 'delete' || action === 'up' || action === 'down') {
-       renderTasks(); // Re-render the list (also re-initializes SortableJS and feather.replace for task list)
+       renderTasks(); // Re-render the list (also re-initializes SortableJS)
        saveTasks(); // Save the updated tasks state (including order)
   }
 };
@@ -1360,16 +1353,16 @@ if (elems.clearAllTasksButton) { // Check if button exists
           // Clear tasks from localStorage
           localStorage.removeItem('tasks');
 
-          // Also clear all associated task start timestamps from localStorage
+          // Also clear all associated task _lastUpdate timestamps from localStorage
            for (let i = localStorage.length - 1; i >= 0; i--) { // Loop backwards while removing
                const key = localStorage.key(i);
-               if (key && (key.startsWith('task_') && key.endsWith('_startTime')) || (key.startsWith('task_') && key.endsWith('_lastUpdate'))) { // Check for both _startTime and _lastUpdate
+               if (key && key.startsWith('task_') && key.endsWith('_lastUpdate')) { // Add check for key existence
                    localStorage.removeItem(key);
                }
            }
 
           // Update the UI
-          renderTasks(); // This also updates the total planned time (and re-initializes feather.replace for task list)
+          renderTasks(); // This also updates the total planned time
 
           alert('All current tasks cleared.');
         }
@@ -1389,16 +1382,16 @@ elems.breakContainer.onclick = e => {
     const durationMinutes = parseInt(btn.dataset.break);
     state.breakTimeLeft = durationMinutes * 60;
     state.breakActive = true;
-    renderBreak(); // Renders the break timer UI
-    saveBreakState(); // Save break state (sets start time and duration)
-    renderTasks(); // Re-render tasks to disable buttons (and re-initializes feather.replace for task list)
+    renderBreak();
+    saveBreakState(); // Save break state when starting a break
+    renderTasks(); // Re-render tasks to disable buttons
   } else if (e.target.id === 'end-break') { // Listen for the end break button
          // Check if the end break button was clicked
           state.breakActive = false;
           state.breakTimeLeft = 0; // Ensure it's 0 when ended manually
-          renderBreak(); // Renders the preset buttons (and re-initializes feather.replace for break section)
-          saveBreakState(); // Save break state when ending a break (clears timestamps)
-           renderTasks(); // Re-render tasks to re-enable buttons (and re-initializes feather.replace for task list)
+          renderBreak(); // Renders the preset buttons
+          saveBreakState(); // Save break state when ending a break (also removes timestamps)
+           renderTasks(); // Re-render tasks to re-enable buttons
 
           // Play break end sound
           breakEndSound.play().catch(e => console.log('Error playing break end sound:', e));
@@ -1410,6 +1403,7 @@ elems.breakContainer.onclick = e => {
               body: 'Time to get back to work!',
               silent: true // We're playing our own sound
             });
+            // Close notification after 5 seconds (optional)
             setTimeout(() => notification.close(), 5000);
           }
   }
@@ -1436,10 +1430,6 @@ function renderBreak() {
           elems.breakContainer.innerHTML = ['5','10','15','20','30'].map(t => `<button data-break="${t}" class="p-2 bg-teal-600 hover:bg-teal-700 text-white rounded">Break ${t} min</button>`).join(''); // Added hover styles and "Break" text
       }
   }
-    // Re-initialize feather icons within the break container
-    if (typeof feather !== 'undefined') {
-        feather.replace({ root: elems.breakContainer });
-    }
 }
 
 function renderDeadline() {
@@ -1534,9 +1524,7 @@ elems.darkModeToggle.onclick = () => {
   }
 
   // Re-initialize feather icons after changing the icon
-  if (typeof feather !== 'undefined') {
-      feather.replace();
-  }
+  feather.replace();
 };
 
 // Load saved progress data
@@ -1596,36 +1584,46 @@ function loadSavedData() {
             task.remaining = parseFloat(task.remaining) || task.duration; // Initialize remaining from duration if missing
             task.active = Boolean(task.active); // Ensure boolean
             task.completed = Boolean(task.completed); // Ensure boolean
-             task.startTimestamp = parseFloat(localStorage.getItem(`task_${task.id}_startTime`)) || null; // Load start timestamp
-
 
             // Restore state for tasks that were active when browser was closed
-            if (task.active && !task.completed && task.startTimestamp) {
-              const elapsed = Math.floor((now - task.startTimestamp) / 1000);
+            if (task.active && !task.completed) {
+              const lastUpdateKey = `task_${task.id}_lastUpdate`;
+              const lastUpdate = localStorage.getItem(lastUpdateKey);
 
-              if (elapsed > 0) {
-                 if (elapsed < task.remaining) {
-                   task.remaining -= elapsed;
-                 } else {
-                   // Task completed while browser was closed
-                   // Time achieved is added by the interval. On load, we only need to update the state.
-                   task.remaining = 0;
-                   task.completed = true;
-                   task.active = false;
+              if (lastUpdate) {
+                const elapsed = Math.floor((now - parseInt(lastUpdate)) / 1000);
+
+                if (elapsed > 0) {
+                   if (elapsed < task.remaining) {
+                     task.remaining -= elapsed;
+                   } else {
+                     // Task completed while browser was closed
+                     // Add the full task duration upon completion via timer
+                       const timeToAdd = task.duration;
+                       state.hoursAchieved += timeToAdd / 3600;
+                       state.hoursAchieved = parseFloat(state.hoursAchieved.toFixed(2)); // Prevent float errors
+                       // elems.hoursAchieved.textContent = state.hoursAchieved.toFixed(2); // Updated by updatePercentages/updateWastedHoursDisplay
+                       updatePercentages(); // Update BOTH achieved and wasted percentages/displays
+                       updateWastedHoursDisplay(); // Ensure wasted hours display is also updated
+                       saveHoursAchieved();
+
+
+                     task.remaining = 0;
+                     task.completed = true;
+                     task.active = false;
+
+                   }
                  }
-               }
-                // Clear the start timestamp now that elapsed time is calculated/accounted for
-                localStorage.removeItem(`task_${task.id}_startTime`);
-                task.startTimestamp = null; // Clear in state too
-
-            } else { // If task is not active, is completed, or has no start timestamp
-               // Ensure no stale start timestamp
-               localStorage.removeItem(`task_${task.id}_startTime`);
-               task.startTimestamp = null; // Ensure null in state
+                 // Remove last update key regardless, a new one is set if the task remains active
+                 localStorage.removeItem(lastUpdateKey);
+              } else {
+                  // If a task is active but no timestamp found (shouldn't happen if saved correctly),
+                  // assume it was just started when the browser closed. Keep it active but don't deduct time yet.
+              }
+            } else { // If task is not active or is completed
+               // Ensure no stale lastUpdate timestamp
+               localStorage.removeItem(`task_${task.id}_lastUpdate`);
             }
-            // Also remove any old _lastUpdate timestamps from previous versions
-            localStorage.removeItem(`task_${task.id}_lastUpdate`);
-
              return task; // Return the potentially modified task
         });
         // Filter out any tasks that might have become invalid during mapping (e.g., no text or duration)
@@ -1727,6 +1725,8 @@ function loadSavedData() {
        if (remaining > 0) {
          state.breakActive = true;
          state.breakTimeLeft = remaining;
+          // Note: lastUpdate timestamp for break was removed in the logic below.
+          // The check against breakStartTime is simpler for break duration.
        } else {
          // Break ended while browser was closed
          console.log("Break ended while page was closed.");
@@ -1769,21 +1769,7 @@ function saveHoursAchieved() {
 
 // Save tasks (main list) when updated
 function saveTasks() {
-  // Before saving, remove startTimestamp from tasks object as it's runtime state, not persistent state
-  // Save startTimestamp separately using task ID keys
-  const tasksToSave = state.tasks.map(task => {
-      const taskCopy = { ...task }; // Create a shallow copy
-      // If the task is active, save its start timestamp separately
-      if (taskCopy.active && taskCopy.startTimestamp) {
-          localStorage.setItem(`task_${taskCopy.id}_startTime`, taskCopy.startTimestamp);
-      } else {
-           // If task is not active, ensure no stale timestamp is saved
-           localStorage.removeItem(`task_${taskCopy.id}_startTime`);
-      }
-      delete taskCopy.startTimestamp; // Remove from the object we are stringifying
-      return taskCopy;
-  });
-  localStorage.setItem('tasks', JSON.stringify(tasksToSave));
+  localStorage.setItem('tasks', JSON.stringify(state.tasks));
 }
 
 // Save weekly plan when updated
@@ -1794,15 +1780,17 @@ function saveWeeklyPlan() {
 // Save break state
 function saveBreakState() {
   if (state.breakActive) {
-    // Set startTime and Duration when break *starts* or if it becomes active/reloaded
+    // Only set startTime and Duration when break *starts* (if not already set)
     if (!localStorage.getItem('breakStartTime')) {
          localStorage.setItem('breakStartTime', new Date().getTime().toString()); // Store as string
-         // Store the *current* remaining time as the duration for calculation on reload
-         localStorage.setItem('breakDuration', state.breakTimeLeft.toString());
+         localStorage.setItem('breakDuration', state.breakTimeLeft.toString()); // Store initial duration as string
     }
+    // Note: break_lastUpdate was removed as elapsed time is now calculated directly from breakStartTime
   } else {
     localStorage.removeItem('breakStartTime');
     localStorage.removeItem('breakDuration');
+    // Ensure the old lastUpdate is removed if it existed
+    localStorage.removeItem('break_lastUpdate');
   }
 }
 
@@ -1888,7 +1876,7 @@ function addResetHoursAchievedButton() {
 
        // Re-render calendar if visible
       if (!elems.calendarSection.classList.contains('hidden')) {
-         renderCalendar(); // Re-renders calendar with updated data
+         renderCalendar();
       }
     }
   };
@@ -1898,11 +1886,6 @@ function addResetHoursAchievedButton() {
    // Find where to insert the button (after the percentage paragraph)
    const insertPoint = elems.percentageAchieved;
   if(hoursAchievedSection && insertPoint) hoursAchievedSection.insertBefore(resetHoursBtn, insertPoint.nextSibling);
-
-    // Re-initialize feather icons within the hours achieved section (none used here currently)
-    // if (typeof feather !== 'undefined') {
-    //     feather.replace({ root: hoursAchievedSection });
-    // }
 }
 
 // Add a "Reset Wasted Hours Today" button
@@ -1934,7 +1917,7 @@ function addResetWastedHoursButton() {
 
              // Re-render calendar if visible
             if (!elems.calendarSection.classList.contains('hidden')) {
-               renderCalendar(); // Re-renders calendar with updated data
+               renderCalendar();
             }
         }
     };
@@ -1944,11 +1927,6 @@ function addResetWastedHoursButton() {
     // Find where to insert the button (after the percentage paragraph)
     const insertPoint = elems.percentageWasted;
     if(wastedHoursSection && insertPoint) wastedHoursSection.insertBefore(resetWastedBtn, insertPoint.nextSibling);
-
-     // Re-initialize feather icons within the wasted hours section (none used here currently)
-    // if (typeof feather !== 'undefined') {
-    //     feather.replace({ root: wastedHoursSection });
-    // }
 }
 
 
@@ -1981,7 +1959,7 @@ function addClearAllDataButton() {
 
 
           // Reset task views
-          switchTaskView('current'); // Switches to current view and renders it (includes feather.replace)
+          switchTaskView('current'); // Switches to current view and renders it
 
           elems.deadlineInput.value = '';
           // Reset deadline related toggles and display
@@ -1994,7 +1972,7 @@ function addClearAllDataButton() {
           elems.sleepTimeInput.value = '23:00'; // Reset sleep time input to default
           updateSleepTimeRemaining(); // Update the sleep time display
 
-          renderBreak(); // Resets break section UI (includes feather.replace)
+          renderBreak(); // Resets break section UI
 
           // Reset calendar view to current month after clearing data
           currentDate = new Date();
@@ -2002,7 +1980,7 @@ function addClearAllDataButton() {
           currentYear = currentDate.getFullYear();
           // Only re-render calendar if it's currently visible
           if (!elems.calendarSection.classList.contains('hidden')) {
-            renderCalendar(); // Re-renders calendar (includes feather.replace)
+            renderCalendar();
           }
 
            // Reset dark mode toggle button display to match default dark mode
@@ -2014,18 +1992,15 @@ function addClearAllDataButton() {
                 elems.darkModeToggle.innerHTML = '<i data-feather="moon"></i>';
                 elems.darkModeToggle.className = 'ml-4 p-2 bg-blue-100 hover:bg-blue-200 text-indigo-700 rounded-full';
            }
-           // Re-initialize feather icons for the button (already covered by the global call below)
-           // if (typeof feather !== 'undefined') { feather.replace({ root: elems.darkModeToggle.parentElement }); }
+           // Re-initialize feather icons for the button
+           if (typeof feather !== 'undefined') {
+               feather.replace();
+           }
 
 
           alert('All saved data has been cleared.');
           // Optional: Reload page for a full clean slate experience
           // window.location.reload();
-
-          // Re-initialize feather icons globally after clearing/resetting UI
-          if (typeof feather !== 'undefined') {
-               feather.replace();
-          }
       }
     }
   };
@@ -2036,11 +2011,6 @@ function addClearAllDataButton() {
     // We need to find the achieved reset button first. This requires it to be added before this one.
     // Let's get the div and append it at the end. Order matters.
     if(hoursAchievedSection) hoursAchievedSection.appendChild(clearDataBtn);
-
-     // Re-initialize feather icons within the hours achieved section (none used here currently)
-    // if (typeof feather !== 'undefined') {
-    //     feather.replace({ root: hoursAchievedSection });
-    // }
 }
 
 
@@ -2068,15 +2038,22 @@ setInterval(() => {
       const taskElementInDom = elems.tasksListContainer.querySelector(`[data-task-id="${task.id}"]`);
 
       // If the task is active AND not completed AND its UI element exists
-      if (task.active && !task.completed && task.remaining > 0 && taskElementInDom && task.startTimestamp) { // Added check for startTimestamp
+      if (task.active && !task.completed && task.remaining > 0 && taskElementInDom) {
             const timerSpan = taskElementInDom.querySelector('p.font-mono'); // Find the timer span
 
-            // Calculate elapsed time since the task started
-            const elapsedSinceStart = Math.floor((now.getTime() - task.startTimestamp) / 1000);
+            // Store the start timestamp if not already set
+            if (!task.startTimestamp) {
+                task.startTimestamp = now.getTime();
+                localStorage.setItem(`task_${task.id}_startTime`, task.startTimestamp);
+            }
+
+            // Calculate elapsed time since the task started or last update
+            const startTime = task.startTimestamp || now.getTime();
+            const elapsedSinceStart = Math.floor((now.getTime() - startTime) / 1000);
             const expectedRemaining = task.duration - elapsedSinceStart;
 
             // Use the more accurate time calculation based on start timestamp
-            if (expectedRemaining < task.remaining) { // Only update if time has actually passed
+            if (elapsedSinceStart > 0 && expectedRemaining < task.remaining) {
                const timeToDeduct = task.remaining - expectedRemaining;
                task.remaining = expectedRemaining;
 
@@ -2105,10 +2082,10 @@ setInterval(() => {
 
               // Update UI for completed task immediately (or trigger a re-render)
               // Triggering a re-render is simpler than manually updating all elements here.
-               renderTasks(); // Re-render to update styles, disable buttons, etc. (includes feather.replace for task list)
+               renderTasks(); // Re-render to update styles, disable buttons, etc.
 
               // Save state after task completion
-              saveTasks(); // Saves completed state (also saves startTimestamp if any tasks are still active, but this completed one's is cleared)
+              saveTasks(); // Saves completed state
 
               // Play completion sound
               taskCompleteSound.play().catch(e => console.log('Error playing task completion sound:', e));
@@ -2126,13 +2103,12 @@ setInterval(() => {
           } else if (taskElementInDom) { // Task element exists, but task is not active or completed
                // Clear timestamp if task is not active
                if (!task.active && task.startTimestamp) {
-                   task.startTimestamp = null; // Clear in state
-                   localStorage.removeItem(`task_${task.id}_startTime`); // Clear in storage
+                   task.startTimestamp = null;
+                   localStorage.removeItem(`task_${task.id}_startTime`);
                }
 
                // Manually update UI elements for non-active tasks if they exist in the DOM,
                // in case they were loaded or state changed outside the timer loop.
-               // This ensures they show the correct time and state after loading or manual actions.
                const timerSpan = taskElementInDom.querySelector('p.font-mono');
                const taskTitle = taskElementInDom.querySelector('h3');
 
@@ -2166,44 +2142,32 @@ setInterval(() => {
   if (state.breakActive && state.breakTimeLeft > 0) {
     const breakTimerElement = elems.breakContainer.querySelector('.text-3xl.font-mono'); // Corrected element variable name
      if (breakTimerElement) { // Check if the break timer element exists in the DOM
-        // Ensure break start time is set if break is active (should be set by saveBreakState)
+        // Store break start time if not already set
         if (!localStorage.getItem('breakStartTime')) {
-             // This case should theoretically not happen if saveBreakState is called correctly
-             // when breakActive becomes true, but add a safeguard.
-             localStorage.setItem('breakStartTime', now.getTime().toString());
-             localStorage.setItem('breakDuration', state.breakTimeLeft.toString()); // Use current remaining as duration
+            localStorage.setItem('breakStartTime', now.getTime().toString());
+            localStorage.setItem('breakDuration', state.breakTimeLeft.toString());
         }
-
-        // Calculate elapsed time since break started using the stored timestamp
+        
+        // Calculate elapsed time since break started
         const breakStartTime = parseInt(localStorage.getItem('breakStartTime'));
-        const initialBreakDuration = parseInt(localStorage.getItem('breakDuration')); // Use the initial duration saved at start
-
-
-        if (!isNaN(breakStartTime) && !isNaN(initialBreakDuration)) {
+        const breakDuration = parseInt(localStorage.getItem('breakDuration'));
+        
+        if (breakStartTime && breakDuration) {
             const elapsedSinceStart = Math.floor((now.getTime() - breakStartTime) / 1000);
-             // Calculate remaining based on initial duration and elapsed time
-            state.breakTimeLeft = Math.max(0, initialBreakDuration - elapsedSinceStart);
-
+            state.breakTimeLeft = Math.max(0, breakDuration - elapsedSinceStart);
+            
             // Update the time display in the DOM
             breakTimerElement.textContent = formatTime(state.breakTimeLeft);
-        } else {
-            // Handle invalid stored data by ending the break
-            console.error("Invalid break start time or duration in localStorage.");
-            state.breakActive = false;
-            state.breakTimeLeft = 0;
-            localStorage.removeItem('breakStartTime');
-            localStorage.removeItem('breakDuration');
         }
-
 
         if (state.breakTimeLeft <= 0) {
           state.breakActive = false;
           state.breakTimeLeft = 0; // Ensure it's 0
           localStorage.removeItem('breakStartTime');
           localStorage.removeItem('breakDuration');
-          renderBreak(); // This line ensures the UI updates when break ends (includes feather.replace for break section)
+          renderBreak(); // This line ensures the UI updates when break ends
           saveBreakState(); // Save state after break ends (cleans up all break storage)
-          renderTasks(); // Re-render tasks to re-enable buttons (includes feather.replace for task list)
+          renderTasks(); // Re-render tasks to re-enable buttons
 
           // Play break end sound
           breakEndSound.play().catch(e => console.log('Error playing break end sound:', e));
@@ -2218,10 +2182,6 @@ setInterval(() => {
             setTimeout(() => notification.close(), 5000);
           }
         }
-     } else {
-          // If break is active in state but UI isn't rendered, force render (e.g., after page reload)
-          renderBreak(); // Render break UI (includes feather.replace for break section)
-          // This render call would also update the time display.
      }
   } else {
        // Ensure break timestamps are cleared if break is not active
@@ -2245,28 +2205,29 @@ document.addEventListener('visibilitychange', () => {
     console.log("Page visible, reloading data...");
     loadSavedData(); // This loads all state (tasks, weeklyPlan, hours, deadline, settings, break), updates percentage, calls renderDeadline etc.
     // After loading, render the *correct* view based on state.currentTaskView
-    switchTaskView(state.currentTaskView); // This renders either main tasks or weekly plan (includes feather.replace for task/weekly lists)
+    switchTaskView(state.currentTaskView); // This renders either main tasks or weekly plan
 
-    renderBreak(); // Ensure break UI is rendered (includes feather.replace for break section)
+    renderBreak(); // Ensure break UI is rendered
     updateSleepTimeRemaining(); // Call again to ensure sleep time is correct
 
     // If calendar is open, re-render it
     if (!elems.calendarSection.classList.contains('hidden')) {
-      renderCalendar(); // Re-renders calendar (includes feather.replace)
+      renderCalendar();
     }
      // Re-initialize feather icons everywhere after loading/rendering
     if (typeof feather !== 'undefined') {
-        feather.replace(); // Global replace to catch everything else (header, summary, etc.)
+        feather.replace();
     }
 
   } else {
      // Page is hidden, save the current state
      console.log("Page hidden, saving data...");
-     // The interval loop updates remaining times and adds to achieved hours *before* the page hides if an interval tick occurs.
-     // Saving the state here ensures the latest data is persisted.
-     saveTasks(); // Saves task remaining times and states (and startTimestamp separately)
+     // The interval loop updates lastUpdate timestamps for active timers *before* the page hides if an interval tick occurs.
+     // Saving the state here provides a backup, ensuring the latest `remaining` times and `active` states are saved.
+     // The lastUpdate timestamps help reconstruct the exact state on reload even if the save here is slightly old.
+     saveTasks(); // Saves task remaining times and states
      saveWeeklyPlan(); // Save the weekly plan state
-     saveBreakState(); // Saves break state (including startTime and Duration)
+     saveBreakState(); // Saves break state (including lastUpdate for break)
      saveHoursAchieved(); // Saves achieved hours (which was updated by the interval loop)
      localStorage.setItem('dailyProgress', JSON.stringify(state.dailyProgress)); // Save daily progress
      saveDeadlineSettings(); // Save deadline and settings (including sleep time and toggles)
@@ -2296,7 +2257,7 @@ document.addEventListener('DOMContentLoaded', () => {
     switchTaskView(state.currentTaskView);
 
 
-    renderBreak(); // Ensure break section is rendered based on loaded state (includes feather.replace for break section)
+    renderBreak(); // Ensure break section is rendered based on loaded state
     updateSleepTimeRemaining(); // Call once initially to display the correct time until sleep on load
 
 
@@ -2305,7 +2266,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // It also ensures the initial dark mode button icon is rendered.
     // Icons inside task/weekly lists are now replaced by renderTasks/renderWeeklyPlan/switchTaskView.
     if (typeof feather !== 'undefined') {
-        feather.replace(); // Global replace to catch everything else (header, summary, etc.)
+        feather.replace(); // Replace icons that are part of the static HTML and dynamically added buttons outside task lists
     }
 
     // Initial render of calendar if it was saved as not hidden (though currently it starts hidden)

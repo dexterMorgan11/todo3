@@ -10,6 +10,58 @@
   <script defer src="https://unpkg.com/feather-icons"></script>
   <!-- SortableJS for drag and drop -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+  <!-- === START: App Icon Links === -->
+  <!--
+    Note: While the HTML is in one file, the actual icon image files (e.g., favicon.ico, icon-32x32.png etc.)
+    must exist separately on your web server at the paths specified in the href attributes below (e.g., /favicon.ico, /icon-32x32.png).
+    You need to generate these images from your icon design.
+
+    The manifest.json is included here using a data URI to keep everything in one file as requested,
+    but the standard and recommended approach for production is to create a separate manifest.json file
+    and link to it using <link rel="manifest" href="/manifest.json">. Data URIs for manifests have limitations
+    and browser support varies.
+  -->
+  <!-- Standard Favicon (often ICO format, can contain multiple sizes) -->
+  <!-- Replace /favicon.ico with the actual path to your generated favicon.ico file -->
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+
+  <!-- High-resolution favicon alternatives (PNG format is widely supported) -->
+  <!-- Replace the href paths with the actual paths to your generated PNG icon files -->
+  <link rel="icon" type="image/png" sizes="16x16" href="/icon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icon-32x32.png">
+  <!-- Add other sizes if you generated them, e.g.: -->
+  <!-- <link rel="icon" type="image/png" sizes="48x48" href="/icon-48x48.png"> -->
+  <!-- <link rel="icon" type="image/png" sizes="96x96" href="/icon-96x96.png"> -->
+
+  <!-- Apple Touch Icon (for iOS home screens) -->
+  <!-- Replace /icon-180x180.png with the actual path to your generated 180x180px PNG icon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-180x180.png">
+
+  <!-- Web App Manifest (for Progressive Web Apps - PWA) -->
+  <!-- Using a data URI for manifest.json to keep it in one file. -->
+  <!-- Recommended: Create a separate /manifest.json file and use <link rel="manifest" href="/manifest.json"> -->
+  <link rel="manifest" href="data:application/manifest+json,
+  {
+    %22name%22:%20%22Todo%20Timer%20App%22,
+    %22short_name%22:%20%22TodoTimer%22,
+    %22description%22:%20%22Manage%20your%20tasks%20with%20a%20built-in%20timer.%22,
+    %22start_url%22:%20%22/%22,
+    %22display%22:%20%22standalone%22,
+    %22background_color%22:%20%22#0e172a%22,
+    %22theme_color%22:%20%22#4f46e5%22,
+    %22icons%22:%20[
+      {%22src%22:%20%22/icon-192x192.png%22,%20%22sizes%22:%20%22192x192%22,%20%22type%22:%20%22image/png%22},
+      {%22src%22:%20%22/icon-512x512.png%22,%20%22sizes%22:%20%22512x512%22,%20%22type%22:%20%22image/png%22}
+      // Add more icon sizes here corresponding to your generated PNG files
+      // ,{%22src%22:%20%22/icon-48x48.png%22,%20%22sizes%22:%20%2248x48%22,%20%22type%22:%20%22image/png%22}
+    ]
+  }
+  ">
+
+  <!-- === END: App Icon Links === -->
+
+
   <style>
     /* Ensure Inter font is used */
     body { font-family: 'Inter', sans-serif; }
@@ -333,6 +385,19 @@
   </div>
 
 <script>
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(registration => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      })
+      .catch(err => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+  });
+}
+
 // Notification permission request - Request immediately on page load
 if (Notification.permission !== 'granted') {
   Notification.requestPermission().then(permission => {
@@ -1978,56 +2043,44 @@ setInterval(() => {
       if (task.active && !task.completed && task.remaining > 0 && taskElementInDom) {
             const timerSpan = taskElementInDom.querySelector('p.font-mono'); // Find the timer span
 
+            // Store the start timestamp if not already set
+            if (!task.startTimestamp) {
+                task.startTimestamp = now.getTime();
+                localStorage.setItem(`task_${task.id}_startTime`, task.startTimestamp);
+            }
 
-            const lastUpdateKey = `task_${task.id}_lastUpdate`;
-            const lastUpdate = localStorage.getItem(lastUpdateKey);
-            // Use the stored timestamp or assume 'now' if none (e.g.g., first tick after load/start)
-            // Use current time if lastUpdate is missing or invalid
-            const lastUpdateTime = lastUpdate ? parseInt(lastUpdate) : now.getTime();
+            // Calculate elapsed time since the task started or last update
+            const startTime = task.startTimestamp || now.getTime();
+            const elapsedSinceStart = Math.floor((now.getTime() - startTime) / 1000);
+            const expectedRemaining = task.duration - elapsedSinceStart;
 
-            // Calculate elapsed time since the last tick/update
-            // We should calculate based on the difference between *now* and the *last saved timestamp*.
-            // This ensures that even if setInterval is delayed, the time deduction is correct.
-            const elapsedSinceLastUpdate = Math.floor((now.getTime() - lastUpdateTime) / 1000);
-
-
-            if (elapsedSinceLastUpdate > 0) {
-               const timeToDeduct = Math.min(elapsedSinceLastUpdate, task.remaining);
-               task.remaining -= timeToDeduct;
+            // Use the more accurate time calculation based on start timestamp
+            if (elapsedSinceStart > 0 && expectedRemaining < task.remaining) {
+               const timeToDeduct = task.remaining - expectedRemaining;
+               task.remaining = expectedRemaining;
 
                 // Add deducted time to achieved amount *only for running timers*
                 // This makes the achieved hours tick up while a task is running, not just on completion.
                 // Add to a temporary counter for this interval.
                achievedThisInterval += timeToDeduct;
 
-
                // Update the specific task's timer element directly
                if (timerSpan) {
-                   timerSpan.textContent = formatTime(task.remaining);
+                   timerSpan.textContent = formatTime(Math.max(0, task.remaining));
                    timerSpan.classList.add('text-green-400'); // Timer is green when active
                    timerSpan.classList.remove('text-gray-400', 'text-blue-400');
                }
-
-               // Save the new last update time for the task
-               // This should happen AFTER we've processed the elapsed time
-               localStorage.setItem(lastUpdateKey, now.getTime());
-
-               // No interval-based saving needed.
-
             }
-
 
             if (task.remaining <= 0) {
               task.remaining = 0; // Ensure it's not negative
 
-               // The time has already been added to achievedThisInterval as it counted down.
-               // No need to add the full duration here anymore.
-
               task.completed = true;
               task.active = false;
+              task.startTimestamp = null; // Clear the timestamp
 
-              // Remove last update time for completed task
-              localStorage.removeItem(lastUpdateKey);
+              // Remove stored timestamps
+              localStorage.removeItem(`task_${task.id}_startTime`);
 
               // Update UI for completed task immediately (or trigger a re-render)
               // Triggering a re-render is simpler than manually updating all elements here.
@@ -2035,7 +2088,6 @@ setInterval(() => {
 
               // Save state after task completion
               saveTasks(); // Saves completed state
-
 
               // Play completion sound
               taskCompleteSound.play().catch(e => console.log('Error playing task completion sound:', e));
@@ -2051,8 +2103,11 @@ setInterval(() => {
               }
             }
           } else if (taskElementInDom) { // Task element exists, but task is not active or completed
-               // Ensure no stale lastUpdate timestamp if task is not active
-               localStorage.removeItem(`task_${task.id}_lastUpdate`);
+               // Clear timestamp if task is not active
+               if (!task.active && task.startTimestamp) {
+                   task.startTimestamp = null;
+                   localStorage.removeItem(`task_${task.id}_startTime`);
+               }
 
                // Manually update UI elements for non-active tasks if they exist in the DOM,
                // in case they were loaded or state changed outside the timer loop.
@@ -2085,36 +2140,36 @@ setInterval(() => {
        saveHoursAchieved(); // Save the updated achieved hours
    }
 
-
   // Break countdown - Optimize by updating time span directly
   if (state.breakActive && state.breakTimeLeft > 0) {
     const breakTimerElement = elems.breakContainer.querySelector('.text-3xl.font-mono'); // Corrected element variable name
      if (breakTimerElement) { // Check if the break timer element exists in the DOM
-        const lastUpdateKey = `break_lastUpdate`;
-        const lastUpdate = localStorage.getItem(lastUpdateKey);
-         // Use the stored timestamp or assume 'now' if none (e.g., first tick after load/start)
-        const lastUpdateTime = lastUpdate ? parseInt(lastUpdate) : now.getTime();
-        const elapsedSinceLastUpdate = Math.floor((now.getTime() - lastUpdateTime) / 1000);
-
-
-        if (elapsedSinceLastUpdate > 0) {
-           const timeToDeduct = Math.min(elapsedSinceLastUpdate, state.breakTimeLeft);
-           state.breakTimeLeft -= timeToDeduct;
-           localStorage.setItem(lastUpdateKey, now.getTime()); // Save new last update time
-
-           // No interval-based saving needed.
+        // Store break start time if not already set
+        if (!localStorage.getItem('breakStartTime')) {
+            localStorage.setItem('breakStartTime', now.getTime().toString());
+            localStorage.setItem('breakDuration', state.breakTimeLeft.toString());
         }
-
-        // Update the time display in the DOM
-        breakTimerElement.textContent = formatTime(state.breakTimeLeft);
+        
+        // Calculate elapsed time since break started
+        const breakStartTime = parseInt(localStorage.getItem('breakStartTime'));
+        const breakDuration = parseInt(localStorage.getItem('breakDuration'));
+        
+        if (breakStartTime && breakDuration) {
+            const elapsedSinceStart = Math.floor((now.getTime() - breakStartTime) / 1000);
+            state.breakTimeLeft = Math.max(0, breakDuration - elapsedSinceStart);
+            
+            // Update the time display in the DOM
+            breakTimerElement.textContent = formatTime(state.breakTimeLeft);
+        }
 
         if (state.breakTimeLeft <= 0) {
           state.breakActive = false;
           state.breakTimeLeft = 0; // Ensure it's 0
-          // localStorage.removeItem(lastUpdateKey); // Clean up timestamp - Handled by saveBreakState
+          localStorage.removeItem('breakStartTime');
+          localStorage.removeItem('breakDuration');
           renderBreak(); // This line ensures the UI updates when break ends
           saveBreakState(); // Save state after break ends (cleans up all break storage)
-           renderTasks(); // Re-render tasks to re-enable buttons
+          renderTasks(); // Re-render tasks to re-enable buttons
 
           // Play break end sound
           breakEndSound.play().catch(e => console.log('Error playing break end sound:', e));
@@ -2131,10 +2186,10 @@ setInterval(() => {
         }
      }
   } else {
-       // Ensure no stale lastUpdate timestamp if break is not active
-       localStorage.removeItem(`break_lastUpdate`); // Double check cleanup
+       // Ensure break timestamps are cleared if break is not active
+       localStorage.removeItem('breakStartTime');
+       localStorage.removeItem('breakDuration');
   }
-
 
   // Update deadline remaining time
   renderDeadline();

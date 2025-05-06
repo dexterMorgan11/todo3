@@ -11,28 +11,55 @@
   <!-- SortableJS for drag and drop -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
-  <!-- === START: App Icon Links (Updated) === -->
-  <!-- Generated using a favicon generator for various platforms -->
-  <!-- Note: The actual icon image files (e.g., apple-icon-57x57.png, favicon-32x32.png, manifest.json etc.)
-    must exist separately on your web server at the paths specified in the href attributes below.
-    You need to generate these images and the manifest.json file from your icon design. -->
-  <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png">
-  <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png">
+  <!-- === START: App Icon Links (Updated to match filenames from user's image) === -->
+  <!--
+    Note: The actual icon image files and the manifest.json/browserconfig.xml files
+    must exist separately on your web server at the paths specified below.
+    These links are updated to match the specific filenames shown in your file list image.
+  -->
+  <!-- Apple Touch Icons -->
   <link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png">
   <link rel="apple-touch-icon" sizes="76x76" href="/apple-icon-76x76.png">
-  <link rel="apple-touch-icon" sizes="114x114" href="/apple-icon-114x114.png">
-  <link rel="apple-touch-icon" sizes="120x120" href="/apple-icon-120x120.png">
-  <link rel="apple-touch-icon" sizes="144x144" href="/apple-icon-144x144.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="/apple-icon-152x152.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png">
-  <link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
+  <!-- If apple-icon-precomposed.png is 180x180, you might use this: -->
+  <!-- <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-icon-precomposed.png"> -->
+  <!-- Or if apple-icon.png is 180x180, use this: -->
+  <!-- <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon.png"> -->
+  <!-- Including the generic precomposed and non-precomposed links based on your filenames -->
+  <link rel="apple-touch-icon-precomposed" href="/apple-icon-precomposed.png">
+  <link rel="apple-touch-icon" href="/apple-icon.png">
+
+
+  <!-- Standard Favicons (PNG and ICO) -->
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+   <!-- Note: your list image shows favicon.ico -->
+   <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+   <link rel="icon" href="/favicon.ico" type="image/x-icon">
+
+
+  <!-- Android / PWA Icons (referenced in manifest.json, but linking here as well doesn't hurt) -->
+   <!-- Assuming 'android-icon-192x192.png' is one of your generated icons -->
+   <link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
+
+
+  <!-- Web App Manifest (for PWA features, references more icons like 192x192, 512x512 etc. within the file) -->
+  <!-- Make sure the manifest.json file exists at the root and is correctly configured -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="msapplication-TileColor" content="#ffffff">
-  <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
-  <meta name="theme-color" content="#ffffff">
+
+  <!-- Windows 8 and 10 Icons and Tile Color -->
+  <!-- Make sure the ms-icon-* files exist and browserconfig.xml exists and is correctly configured -->
+  <meta name="msapplication-TileColor" content="#ffffff"> <!-- Matches your theme color -->
+  <meta name="msapplication-TileImage" content="/ms-icon-144x144.png"> <!-- Standard size for TileImage -->
+   <!-- Explicitly link other MS sizes if you want to be thorough, though browserconfig.xml is preferred -->
+  <meta name="msapplication-square70x70logo" content="/ms-icon-70x70.png"/>
+  <meta name="msapplication-square150x150logo" content="/ms-icon-150x150.png"/>
+  <meta name="msapplication-square310x310logo" content="/ms-icon-310x310.png"/>
+  <meta name="msapplication-config" content="/browserconfig.xml"> <!-- Link to the browserconfig file -->
+
+  <!-- Theme Color (used by some browsers in the address bar or task switcher) -->
+  <meta name="theme-color" content="#ffffff"> <!-- Match this to your app's main color -->
+
   <!-- === END: App Icon Links (Updated) === -->
 
 

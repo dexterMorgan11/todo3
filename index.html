@@ -11,55 +11,29 @@
   <!-- SortableJS for drag and drop -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
-  <!-- === START: App Icon Links === -->
-  <!--
-    Note: While the HTML is in one file, the actual icon image files (e.g., favicon.ico, icon-32x32.png etc.)
-    must exist separately on your web server at the paths specified in the href attributes below (e.g., /favicon.ico, /icon-32x32.png).
-    You need to generate these images from your icon design.
-
-    The manifest.json is included here using a data URI to keep everything in one file as requested,
-    but the standard and recommended approach for production is to create a separate manifest.json file
-    and link to it using <link rel="manifest" href="/manifest.json">. Data URIs for manifests have limitations
-    and browser support varies.
-  -->
-  <!-- Standard Favicon (often ICO format, can contain multiple sizes) -->
-  <!-- Replace /favicon.ico with the actual path to your generated favicon.ico file -->
-  <link rel="icon" href="/favicon.ico" type="image/x-icon">
-
-  <!-- High-resolution favicon alternatives (PNG format is widely supported) -->
-  <!-- Replace the href paths with the actual paths to your generated PNG icon files -->
-  <link rel="icon" type="image/png" sizes="16x16" href="/icon-16x16.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/icon-32x32.png">
-  <!-- Add other sizes if you generated them, e.g.: -->
-  <!-- <link rel="icon" type="image/png" sizes="48x48" href="/icon-48x48.png"> -->
-  <!-- <link rel="icon" type="image/png" sizes="96x96" href="/icon-96x96.png"> -->
-
-  <!-- Apple Touch Icon (for iOS home screens) -->
-  <!-- Replace /icon-180x180.png with the actual path to your generated 180x180px PNG icon -->
-  <link rel="apple-touch-icon" sizes="180x180" href="/icon-180x180.png">
-
-  <!-- Web App Manifest (for Progressive Web Apps - PWA) -->
-  <!-- Using a data URI for manifest.json to keep it in one file. -->
-  <!-- Recommended: Create a separate /manifest.json file and use <link rel="manifest" href="/manifest.json"> -->
-  <link rel="manifest" href="data:application/manifest+json,
-  {
-    %22name%22:%20%22Todo%20Timer%20App%22,
-    %22short_name%22:%20%22TodoTimer%22,
-    %22description%22:%20%22Manage%20your%20tasks%20with%20a%20built-in%20timer.%22,
-    %22start_url%22:%20%22/%22,
-    %22display%22:%20%22standalone%22,
-    %22background_color%22:%20%22#0e172a%22,
-    %22theme_color%22:%20%22#4f46e5%22,
-    %22icons%22:%20[
-      {%22src%22:%20%22/icon-192x192.png%22,%20%22sizes%22:%20%22192x192%22,%20%22type%22:%20%22image/png%22},
-      {%22src%22:%20%22/icon-512x512.png%22,%20%22sizes%22:%20%22512x512%22,%20%22type%22:%20%22image/png%22}
-      // Add more icon sizes here corresponding to your generated PNG files
-      // ,{%22src%22:%20%22/icon-48x48.png%22,%20%22sizes%22:%20%2248x48%22,%20%22type%22:%20%22image/png%22}
-    ]
-  }
-  ">
-
-  <!-- === END: App Icon Links === -->
+  <!-- === START: App Icon Links (Updated) === -->
+  <!-- Generated using a favicon generator for various platforms -->
+  <!-- Note: The actual icon image files (e.g., apple-icon-57x57.png, favicon-32x32.png, manifest.json etc.)
+    must exist separately on your web server at the paths specified in the href attributes below.
+    You need to generate these images and the manifest.json file from your icon design. -->
+  <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png">
+  <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png">
+  <link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png">
+  <link rel="apple-touch-icon" sizes="76x76" href="/apple-icon-76x76.png">
+  <link rel="apple-touch-icon" sizes="114x114" href="/apple-icon-114x114.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/apple-icon-120x120.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="/apple-icon-144x144.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/apple-icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png">
+  <link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="msapplication-TileColor" content="#ffffff">
+  <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+  <meta name="theme-color" content="#ffffff">
+  <!-- === END: App Icon Links (Updated) === -->
 
 
   <style>
@@ -1706,46 +1680,42 @@ function loadSavedData() {
   // Load break state
   const breakStartTime = localStorage.getItem('breakStartTime');
   const breakDuration = localStorage.getItem('breakDuration');
-  const breakLastUpdate = localStorage.getItem('break_lastUpdate');
 
   state.breakActive = false; // Assume break is not active initially on load
   state.breakTimeLeft = 0;
 
-  if (breakStartTime && breakDuration && breakLastUpdate) {
+  if (breakStartTime && breakDuration) {
     const now = new Date().getTime();
     const startTimeMs = parseInt(breakStartTime);
     const durationSec = parseInt(breakDuration);
-    const lastUpdateMs = parseInt(breakLastUpdate);
+
 
     // Basic validation
-    if (!isNaN(startTimeMs) && !isNaN(durationSec) && !isNaN(lastUpdateMs)) {
+    if (!isNaN(startTimeMs) && !isNaN(durationSec)) {
        const totalElapsedTimeSinceStart = Math.floor((now - startTimeMs) / 1000);
        const remaining = durationSec - totalElapsedTimeSinceStart;
 
        if (remaining > 0) {
          state.breakActive = true;
          state.breakTimeLeft = remaining;
-          // Update the break_lastUpdate timestamp for the running timer
-          localStorage.setItem('break_lastUpdate', now); // Update timestamp on load if break continues
+          // Note: lastUpdate timestamp for break was removed in the logic below.
+          // The check against breakStartTime is simpler for break duration.
        } else {
          // Break ended while browser was closed
          console.log("Break ended while page was closed.");
          localStorage.removeItem('breakStartTime');
          localStorage.removeItem('breakDuration');
-         localStorage.removeItem('break_lastUpdate');
        }
     } else {
         console.error("Invalid break data in localStorage.");
          // Clean up any partial break state if data is invalid
          localStorage.removeItem('breakStartTime');
          localStorage.removeItem('breakDuration');
-         localStorage.removeItem('break_lastUpdate');
     }
   } else {
        // Clean up any partial break state if timestamps are missing
        localStorage.removeItem('breakStartTime');
        localStorage.removeItem('breakDuration');
-       localStorage.removeItem('break_lastUpdate');
   }
 
   // === Removed Dark Mode Loading Logic ===
@@ -1788,10 +1758,11 @@ function saveBreakState() {
          localStorage.setItem('breakStartTime', new Date().getTime().toString()); // Store as string
          localStorage.setItem('breakDuration', state.breakTimeLeft.toString()); // Store initial duration as string
     }
-    localStorage.setItem('break_lastUpdate', new Date().getTime().toString()); // Always update lastUpdate while active
+    // Note: break_lastUpdate was removed as elapsed time is now calculated directly from breakStartTime
   } else {
     localStorage.removeItem('breakStartTime');
     localStorage.removeItem('breakDuration');
+    // Ensure the old lastUpdate is removed if it existed
     localStorage.removeItem('break_lastUpdate');
   }
 }

@@ -438,7 +438,8 @@ const state = {
   breakActive: false,
   breakTimeLeft: 0,
   dailyProgress: {}, // New state for tracking daily progress percentage
-  noSleepToggle: false // New state for tracking "didn't sleep" option
+  noSleepToggle: false, // New state for tracking "didn't sleep" option
+  pausedTasks: [] // New state for tracking paused tasks when browser is closed
 };
 
 // Define the total potential productive hours in a day (24 total - 8 sleep = 16)
@@ -1233,7 +1234,13 @@ elems.tasksListContainer.onclick = e => {
               localStorage.setItem(`task_${t.id}_lastUpdate`, new Date().getTime());
           }
       });
+      
+      // Toggle the active state
       task.active = !task.active;
+      
+      // Clear any existing startTimestamp when toggling
+      // This ensures we get a fresh timestamp when starting
+      task.startTimestamp = null;
 
       // Save last update time for the toggled task
       if(task.active) {
@@ -1949,6 +1956,7 @@ function addClearAllDataButton() {
           state.breakActive = false;
           state.breakTimeLeft = 0;
           state.dailyProgress = {}; // Clear calendar history
+          state.pausedTasks = []; // Clear paused tasks
 
           // Reset UI elements to their default/empty states
 
@@ -2029,8 +2037,6 @@ setInterval(() => {
 
   // Task countdown - ONLY process tasks in the main state.tasks array
   // Optimize by updating time spans directly instead of full re-render
-  // No longer need stateSavedForInterval flag as interval doesn't save
-
   let achievedThisInterval = 0; // Track total seconds achieved in this interval across all tasks
 
   state.tasks.forEach(task => {
@@ -2041,50 +2047,24 @@ setInterval(() => {
       if (task.active && !task.completed && task.remaining > 0 && taskElementInDom) {
             const timerSpan = taskElementInDom.querySelector('p.font-mono'); // Find the timer span
 
-            // Store the start timestamp if not already set
-            if (!task.startTimestamp) {
-                task.startTimestamp = now.getTime();
-                localStorage.setItem(`task_${task.id}_startTime`, task.startTimestamp);
-            }
+            // Decrement remaining time by 1 second
+            task.remaining = Math.max(0, task.remaining - 1);
+            achievedThisInterval += 1; // Add one second to achieved time
 
-            // Calculate elapsed time since the task started or last update
-            const startTime = task.startTimestamp || now.getTime();
-            const elapsedSinceStart = Math.floor((now.getTime() - startTime) / 1000);
-            const expectedRemaining = task.duration - elapsedSinceStart;
-
-            // Use the more accurate time calculation based on start timestamp
-            if (elapsedSinceStart > 0 && expectedRemaining < task.remaining) {
-               const timeToDeduct = task.remaining - expectedRemaining;
-               task.remaining = expectedRemaining;
-
-                // Add deducted time to achieved amount *only for running timers*
-                // This makes the achieved hours tick up while a task is running, not just on completion.
-                // Add to a temporary counter for this interval.
-               achievedThisInterval += timeToDeduct;
-
-               // Update the specific task's timer element directly
-               if (timerSpan) {
-                   timerSpan.textContent = formatTime(Math.max(0, task.remaining));
-                   timerSpan.classList.add('text-green-400'); // Timer is green when active
-                   timerSpan.classList.remove('text-gray-400', 'text-blue-400');
-               }
+            // Update the specific task's timer element directly
+            if (timerSpan) {
+                timerSpan.textContent = formatTime(task.remaining);
+                timerSpan.classList.add('text-green-400'); // Timer is green when active
+                timerSpan.classList.remove('text-gray-400', 'text-blue-400');
             }
 
             if (task.remaining <= 0) {
               task.remaining = 0; // Ensure it's not negative
-
               task.completed = true;
               task.active = false;
-              task.startTimestamp = null; // Clear the timestamp
 
-              // Remove stored timestamps
-              localStorage.removeItem(`task_${task.id}_startTime`);
-
-              // Update UI for completed task immediately (or trigger a re-render)
-              // Triggering a re-render is simpler than manually updating all elements here.
-               renderTasks(); // Re-render to update styles, disable buttons, etc.
-
-              // Save state after task completion
+              // Update UI for completed task immediately
+              renderTasks(); // Re-render to update styles, disable buttons, etc.
               saveTasks(); // Saves completed state
 
               // Play completion sound
@@ -2094,21 +2074,14 @@ setInterval(() => {
               if (Notification.permission === 'granted') {
                 const notification = new Notification(`Task "${task.text}" Completed!`, {
                   icon: 'https://cdn-icons-png.flaticon.com/512/1055/1055183.png',
-                  body: `You've completed your task: ${task.text}.`, // Body simplified as time is added gradually
+                  body: `You've completed your task: ${task.text}.`,
                   silent: true
                 });
                 setTimeout(() => notification.close(), 5000);
               }
             }
           } else if (taskElementInDom) { // Task element exists, but task is not active or completed
-               // Clear timestamp if task is not active
-               if (!task.active && task.startTimestamp) {
-                   task.startTimestamp = null;
-                   localStorage.removeItem(`task_${task.id}_startTime`);
-               }
-
-               // Manually update UI elements for non-active tasks if they exist in the DOM,
-               // in case they were loaded or state changed outside the timer loop.
+               // Manually update UI elements for non-active tasks if they exist in the DOM
                const timerSpan = taskElementInDom.querySelector('p.font-mono');
                const taskTitle = taskElementInDom.querySelector('h3');
 
@@ -2123,7 +2096,6 @@ setInterval(() => {
                    timerSpan.classList.toggle('text-blue-400', task.completed);
                    timerSpan.classList.toggle('text-gray-400', !task.active && !task.completed); // Paused or not started
                }
-               // Button states are handled by renderTasks when it's called on state changes.
           }
        }); // End state.tasks.forEach
 
@@ -2235,45 +2207,41 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Wait for DOM to be fully loaded before initialising
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize
+// Initialize the app
+function init() {
+    // Load saved state
     loadSavedData(); // Loads ALL state (tasks, weeklyPlan, hours, deadline, settings, break), updates percentages, calls renderDeadline etc.
-
+    
+    // Render preset tasks
     renderPresets(); // Renders main task presets
-
+    
     // Add utility buttons dynamically to the correct sections
     addResetHoursAchievedButton(); // Adds to Hours Achieved section
     addResetWastedHoursButton(); // Adds to Wasted Hours section
-    // addClearTasksAndBreakButton(); // Removed as requested
     addClearAllDataButton(); // Adds to Hours Achieved section
-
+    
     // Initialize the weekly plan day selector buttons
     renderDaySelector(); // Needs dayNames and state.selectedDay
-
+    
     // Render the correct view based on the loaded state (defaults to 'current')
     // This will call either renderTasks() or renderWeeklyPlan() internally
     // SortableJS initialization is now handled *inside* switchTaskView('current')
     switchTaskView(state.currentTaskView);
-
-
-    renderBreak(); // Ensure break section is rendered based on loaded state
+    
+    // Render break section based on loaded state
+    renderBreak();
+    
+    // Initialize sleep time remaining display
     updateSleepTimeRemaining(); // Call once initially to display the correct time until sleep on load
-
-
-     // Re-initialize feather icons after initial render and adding dynamic buttons
-    // This is important because the dynamic buttons also use feather icons.
-    // It also ensures the initial dark mode button icon is rendered.
-    // Icons inside task/weekly lists are now replaced by renderTasks/renderWeeklyPlan/switchTaskView.
+    
+    // Initialize feather icons
     if (typeof feather !== 'undefined') {
         feather.replace(); // Replace icons that are part of the static HTML and dynamically added buttons outside task lists
     }
+}
 
-    // Initial render of calendar if it was saved as not hidden (though currently it starts hidden)
-    // You might want to add state to save calendar visibility if desired.
-    // For now, it starts hidden and is rendered when the toggle button is clicked.
-    // renderCalendar(); // Called when toggle is clicked now.
-});
+// Wait for DOM to be fully loaded before initialising
+document.addEventListener('DOMContentLoaded', init);
 
 
 </script>

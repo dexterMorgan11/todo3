@@ -442,6 +442,46 @@ const state = {
   pausedTasks: [] // New state for tracking paused tasks when browser is closed
 };
 
+function isNewDay(lastUpdateTime) {
+    if (!lastUpdateTime) return true;
+    const now = new Date();
+    const last = new Date(lastUpdateTime);
+    return now.getDate() !== last.getDate() || 
+           now.getMonth() !== last.getMonth() || 
+           now.getFullYear() !== last.getFullYear();
+}
+
+function checkAndResetDailyStats() {
+    const lastUpdateTime = localStorage.getItem('lastStatsUpdateTime');
+    
+    if (isNewDay(lastUpdateTime)) {
+        // Reset daily stats
+        state.hoursAchieved = 0;
+        state.wastedHours = DAILY_PRODUCTIVE_HOURS;
+        
+        // Update the display
+        updateHoursAchieved();
+        updateWastedHours();
+        
+        // Save the new state
+        saveState();
+    }
+    
+    // Update the last update time
+    localStorage.setItem('lastStatsUpdateTime', new Date().toISOString());
+}
+
+// Modify the existing updateTime function
+function updateTime() {
+    const now = new Date();
+    elems.time.textContent = now.toLocaleTimeString();
+    
+    // Check for day change and reset stats if needed
+    checkAndResetDailyStats();
+    
+    // ... existing updateTime code ...
+}
+
 // Define the total potential productive hours in a day (24 total - 8 sleep = 16)
 const DAILY_PRODUCTIVE_HOURS = 16;
 
